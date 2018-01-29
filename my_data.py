@@ -147,7 +147,13 @@ return : thumbnail (numpy array)
 
 """
 def _create_thumbnail(slide, level):
-    thumbnail = slide.get_thumbnail(slide.level_dimensions(level))
+
+    col, row = slide.level_dimensions[level]
+    
+    thumbnail = slide.get_thumbnail((col, row))
+    
+    thumbnail = np.array(thumbnail)
+    
     return thumbnail
 
 
@@ -195,7 +201,7 @@ def _create_dataset(slide, mask, interest_region):
 if __name__ == "__main__":
     
 
-    list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
+    # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
     list_of_slidename = ["b_0"]
 
