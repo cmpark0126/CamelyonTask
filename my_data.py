@@ -56,7 +56,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
    
     print('Generating rectangular mask...')
     
-    thresh, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_thresh, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     xmax = 0
     ymax = 0
@@ -82,7 +82,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
 
     cv2.imwrite("result_of_interest_region.jpg", ori_img)
 
-    return xmin, ymin, xmax-xmin, ymax-ymin
+    return thresh, xmin, ymin, xmax-xmin, ymax-ymin
 
 """
 param : slide name (string)
@@ -203,7 +203,6 @@ return : dataset(tuple(set of patch, set of information of patch))
 """
 def _create_dataset(slide, mask, interest_region):
     return (set_of_patch, inform_of_patch)
-
 
 if __name__ == "__main__":
     
