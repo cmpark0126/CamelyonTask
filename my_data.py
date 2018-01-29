@@ -5,6 +5,11 @@ import cv2
 from xml.etree.ElementTree import parse
 from PIL import Image
 
+ROOT = "./intern_challenge"
+BASE_ANNO = "annotation"
+BASE_SLIDE = "slide"
+
+
 """
 param : root (string) 
         base_folder (string)
