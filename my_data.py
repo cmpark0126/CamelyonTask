@@ -8,7 +8,7 @@ from PIL import Image
 ROOT = "./intern_challenge"
 BASE_ANNO = "annotation"
 BASE_SLIDE = "slide"
-
+LEVEL = 4
 
 """
 param : root (string) 
@@ -90,12 +90,12 @@ param : slide name (string)
 
 return : annotations (list of numpy)
 """
-def _get_annotation_from_xml(slide_name, downsamples):
-    xml_name = slide_namei + ".xml"
+def _get_annotation_from_xml(path_for_annotation, downsamples):
+    # xml_name = slide_name + ".xml"
     annotation_list = []
     annotation = []
     num_annotation = 0
-    tree = etree.parse(xml_name)
+    tree = etree.parse(path_for_annotation)
     root = tree.getroot()
 
     for Annotation in root.iter("Annotation"):
@@ -152,7 +152,6 @@ return : thumbnail (numpy array)
 
 """
 def _create_thumbnail(slide, level):
-
     col, row = slide.level_dimensions[level]
     
     thumbnail = slide.get_thumbnail((col, row))
@@ -211,18 +210,30 @@ if __name__ == "__main__":
     list_of_slidename = ["b_0"]
 
     for fn in list_of_slidename:
-        slide = openslide.OpenSlide(fn)
-        
-        region = _get_interest_region(slide)
+        root = os.path.expanduser(ROOT)
+        path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif" 
+        path_for_annotation = os.path.join(root, BASE_ANNO, fn) + ".xml"
 
-        annotations = _get_annotation_from_xml(fn, level)
-        mask = _create_tumor_mask(annotations, level)
+        print(path_for_slide)
+        print(path_for_annotation)
+
+        slide = openslide.OpenSlide(path_for_slide)
+        downsamples = slide.level_downsamples[LEVEL]
+
+        print(downsamples)
+    
+        region = _get_interest_region(slide, level)
+
+        print(region)
+
+        # annotation = _get_annotation_from_xml(path_for_annotation, downsamples)
+        # mask = _create_tumor_mask(slide, level, annotation)
         
-        patches, informs = _create_tumor_mask(annotations, mask, region)
+        # patches, informs = _create_tumor_mask(annotations, mask, region)
         
-        thumbnail = _create_thumbnail(slide, level)
-        _draw_tumor_pos_on_thumbnail(thumbnail, annotations)
-        _draw_patch_pos_on_thumbnail(thumbnail, patches)
+        # thumbnail = _create_thumbnail(slide, level)
+        # _draw_tumor_pos_on_thumbnail(thumbnail, annotation)
+        # _draw_patch_pos_on_thumbnail(thumbnail, patches)
 
           
 
