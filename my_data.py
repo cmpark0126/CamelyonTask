@@ -203,6 +203,24 @@ return : dataset(tuple(set of patch, set of information of patch))
 def _create_dataset(slide, mask, interest_region):
     return (set_of_patch, inform_of_patch)
 
+"""
+parmam :
+
+return : 
+
+"""
+'''
+def _mutiproc_(SLIDE_LIST):
+    procs = []
+    for slide_name in SLIDE_LIST:
+        proc = multiprocessing.Process(target = _run, args=(,))
+        procs.append(proc)
+        proc.start()
+
+    for proc in procs:
+        proc.join()
+'''
+
 if __name__ == "__main__":
     
 
