@@ -97,13 +97,14 @@ def _get_annotation_from_xml(path_for_annotation, downsamples):
     num_annotation = 0
     tree = parse(path_for_annotation)
     root = tree.getroot()
+    
 
     for Annotation in root.iter("Annotation"):
         for Coordinate in Annotation.iter("Coordinate"):
             x = round(float(Coordinate.attrib["X"])/downsamples)
             y = round(float(Coordinate.attrib["Y"])/downsamples)
             annotation_list.append((x, y))
-        contourlist.append(np.asarray(annotation_list))
+        annotation.append(np.asarray(annotation_list))
 
     return annotation
 
@@ -116,10 +117,10 @@ param : tumor_slide (openslide)
 
 return : numpy array of tumor mask
 """
-def _create_tumor_mask(tumor_slide, level, annotation):
-    maskslide = np.zeros(tumor_slide.level_dimensions[level][::-1])
+def _create_tumor_mask(slide, level, annotation):
+    maskslide = np.zeros(slide.level_dimensions[level][::-1])
+    cv2.drawContours(maskslide, annotation, -1, 255, -1)
     cv2.imwrite("mask.jpg", maskslide)
-    cv2.drawContours(maskslide, contourlist, -1, 255, -1)
     return maskslide
 
 
@@ -229,7 +230,10 @@ if __name__ == "__main__":
         print(region)
 
         annotation = _get_annotation_from_xml(path_for_annotation, downsamples)
-        mask = _create_tumor_mask(slide, level, annotation)
+        
+        print(type(annotation))
+
+        mask = _create_tumor_mask(slide, LEVEL, annotation)
         
         # patches, informs = _create_tumor_mask(annotations, mask, region)
         
