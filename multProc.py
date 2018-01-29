@@ -29,7 +29,7 @@ PATCH_SIZE = (304, 304)
 
 def open_slide(name):
     tumor_slide = openslide.OpenSlide(name)
-    create_path("DATA/PATCH/Tumor_"+str(name)+"/Level"+str(LEVEL))
+    create_path("Data/Slide"+str(name[0:-4])+"/Patch")
     create_patch(tumor_slide, name, LEVEL, PATCH_SIZE, "DATA/PATCH/Tumor_"+str(name)+"/Level"+str(LEVEL)) 
     #return tumor_slide
 
@@ -41,7 +41,7 @@ def multiproc(nproc):
     tumor_slide = openslide.OpenSlide("b_1.tif")
     tumor_slide2 = openslide.OpenSlide("b_2.tif")
 
-    create_path("DATA/PATCH/Tumor_"+"b_1.tif"+"/Level"+str(LEVEL))
+    create_path("Data/Slde"+"b_1.tif"+"/Level"+str(LEVEL))
     create_path("DATA/PATCH/Tumor_"+"b_2.tif"+"/Level"+str(LEVEL))
     
     r = [
@@ -86,6 +86,6 @@ if __name__ == "__main__":
     for proc in procs:
         proc.join()
 
-    print("--- %s seconds ---" %(time.time() - start_time))
+print("--- %s seconds ---" %(time.time() - start_time))
 
 
