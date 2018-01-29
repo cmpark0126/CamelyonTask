@@ -81,21 +81,40 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
 
 """
 param : slide name (string)
-        level (int)
+        downsamples (int)
 
 return : annotations (list of numpy)
 """
-def _get_annotation_from_xml(slide_name, level):
-    return annotations
+def _get_annotation_from_xml(slide_name, downsamples):
+    xml_name = slide_namei + ".xml"
+    annotation_list = []
+    annotation = []
+    num_annotation = 0
+    tree = etree.parse(xml_name)
+    root = tree.getroot()
+
+    for Annotation in root.iter("Annotation"):
+        for Coordinate in Annotation.iter("Coordinate"):
+            x = round(float(Coordinate.attrib["X"])/downsamples)
+            y = round(float(Coordinate.attrib["Y"])/downsamples)
+            annotation_list.append(x, y)
+        contourlist.append(np.asarray(annotation_list))
+
+    return annotation
 
 
 """
-param : annotations (list of numpy)
+param : tumor_slide (openslide)
+        level(int)
+        annotations (list of numpy)
+        
 
 return : numpy array of tumor mask
 """
-def _create_tumor_mask(annotations, level):
-    return mask
+def _create_tumor_mask(tumor_slide, level, annotation):
+    maskslide = np.zeros(tumor_slide.level_dimensions[level][::-1])
+    cv2.drawContours(maskslide, contourlist, -1, 255, -1)
+    return maskslide
 
 
 """
@@ -103,12 +122,21 @@ brief : if patch represent tumor label value is 1, else 0
 
 param : mask (numpy)
         patch_pos (tuple(x, y, width, height))
-
+        percent (what percent will you determine as tumor)
+        downsamples(int)
 return : label (int)
 
 """
-def _determine_tumor(mask, patch_pos):
-    return label
+def _determine_tumor(mask, patch_pos, percent, downsamples):
+    x, y, w, h = patch_pos
+    if percent > 1 or percent < 0:
+        raise RuntimeError('Percent must be in 0 to 1')
+    maskofpatch = mask[int(y/downsamples): int(y/downsamples) + int(h/downsamples), int(x/downsamples): int(x/downsamples) + int(w/downsamples)]
+    if np.sum(maskofpatch) > percent * 255 * int(h/downsamples) * int(w/downsamples):
+        label_num = 1
+    else:
+        label_num = 0
+    return label_num
 
 
 """
@@ -136,7 +164,8 @@ use : _create_thumbnail(slide, level)
 
 return : thumbnail (numpy array)
 """
-def _draw_tumor_pos_on_thumbnail(slide, level, annotation):
+def _draw_tumor_pos_on_thumbnail(thumbnail, annotation):
+    cv2.drawContours(thumbnail, contourlist, -1, (0, 255, 0), 2)
     return thumbnail
 
 
@@ -145,12 +174,14 @@ brief :
 
 param : thumbnail (numpy array)
         patch_pos (tuple(x, y, width, height))
-        level (int)
+        downsamples (int)
         
 return : thumbnail (numpy array)
 
 """
-def _draw_patch_pos_on_thunmbnail(thumbnail):
+def _draw_patch_pos_on_thunmbnail(thumbnail, patch_pos, downsamples):
+    x, y, w, h = patch_pos
+    cv2.rectangle(thubmnail, (int(x/downsamples), int(y/downsamples)), (int(x/downsamples) + int(w/downsamples), int(y/downsamples) + int(h/downsamples)))
     return thumbnail
 
 
