@@ -56,7 +56,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
    
     print('Generating rectangular mask...')
     
-    contours_thresh, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    thresh, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     xmax = 0
     ymax = 0
@@ -82,7 +82,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
 
     cv2.imwrite("result_of_interest_region.jpg", ori_img)
 
-    return thresh, xmin, ymin, xmax-xmin, ymax-ymin
+    return xmin, ymin, xmax-xmin, ymax-ymin
 
 """
 param : slide name (string)
@@ -92,14 +92,13 @@ return : annotations (list of numpy)
 """
 def _get_annotation_from_xml(path_for_annotation, downsamples):
     # xml_name = slide_name + ".xml"
-    annotation_list = []
     annotation = []
     num_annotation = 0
     tree = parse(path_for_annotation)
     root = tree.getroot()
     
-
     for Annotation in root.iter("Annotation"):
+        annotation_list = []
         for Coordinate in Annotation.iter("Coordinate"):
             x = round(float(Coordinate.attrib["X"])/downsamples)
             y = round(float(Coordinate.attrib["Y"])/downsamples)
@@ -204,12 +203,13 @@ return : dataset(tuple(set of patch, set of information of patch))
 def _create_dataset(slide, mask, interest_region):
     return (set_of_patch, inform_of_patch)
 
+
 if __name__ == "__main__":
     
 
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
-    list_of_slidename = ["b_4"]
+    list_of_slidename = ["b_2"]
 
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
