@@ -147,6 +147,7 @@ return : thumbnail (numpy array)
 
 """
 def _create_thumbnail(slide, level):
+    thumbnail = slide.get_thumbnail(slide.level_dimensions(level))
     return thumbnail
 
 
