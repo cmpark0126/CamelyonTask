@@ -152,6 +152,7 @@ return : thumbnail (numpy array)
 
 """
 def _create_thumbnail(slide, level):
+
     col, row = slide.level_dimensions[level]
     
     thumbnail = slide.get_thumbnail((col, row))
