@@ -21,9 +21,63 @@ param : slide file (openslide)
         
 return : (x, y, width, height)
 """
-def _get_interest_region(slide):
-    return x, y, width, height
+def _get_interest_region(slide, level, o_knl=5, c_knl=9):
+    col, row = slide.level_dimensions[level]
+    
+    ori_img = np.array(slide.read_region((0, 0), level, (col, row)))
+    
+    # color scheme change RGBA->RGB->HSV
+    img = cv2.cvtColor(ori_img, cv2.COLOR_RGBA2RGB)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
 
+    # Out of the HSV channels, only the saturation values are kept. (gray,
+    # white, black pixels have low saturation values while tissue pixels
+    # have high saturation)
+    img = img[:,:,1]
+
+    #roi[roi <= 150] = 0
+    
+    # Saturation values -> BW
+    ret, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    #cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_RawBW_int.jpg", roi)
+
+    # Creation of opening and closing kernels
+    open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
+    close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
+
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, open_knl)
+    cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_knl)
+   
+    print('Generating rectangular mask...')
+    
+    thresh, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    xmax = 0
+    ymax = 0
+    xmin = sys.maxsize
+    ymin = sys.maxsize
+
+    print("in makeRECT")
+    for i in contours:
+        x,y,w,h = cv2.boundingRect(i)
+        if(x > xmax):
+            xmax = x
+        elif(x < xmin):
+            xmin = x
+
+        if(y > ymax):
+            ymax = y
+        elif(y < ymin):
+            ymin = y
+    
+    cv2.rectangle(ori_img, (xmin, ymin), (xmax, ymax), (0,0,255), 5)
+    
+    print('Rectangular mask generated.')
+
+    cv2.imwrite("Data/Slide/ROI" , roi)
+
+    return xmin, ymin, xmax-xmin, ymax-ymin
 
 """
 param : slide name (string)
@@ -142,14 +196,23 @@ if __name__ == "__main__":
 
     list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
+    list_of_slidename = ["b_0"]
+
     for fn in list_of_slidename:
         slide = openslide.OpenSlide(fn)
         
+        region = _get_interest_region(slide)
+
         annotations = _get_annotation_from_xml(fn, level)
+        mask = _create_tumor_mask(annotations, level)
+        
+        patches, informs = _create_tumor_mask(annotations, mask, region)
+        
+        thumbnail = _create_thumbnail(slide, level)
+        _draw_tumor_pos_on_thumbnail(thumbnail, annotations)
+        _draw_patch_pos_on_thumbnail(thumbnail, patches)
 
-
-
-    
+          
 
 
 
