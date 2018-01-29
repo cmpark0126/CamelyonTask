@@ -143,7 +143,7 @@ def make_maskonslide(tumor_slide, mask, level, output_dir):
 
     return True
 
-def makeROI(tumor_slide, level, output_dir, o_knl = 1, c_knl = 1, rect = False):
+def createROI(tumor_slide, level, output_dir, o_knl = 5, c_knl = 9, rect = False):
 
     col, row = tumor_slide.level_dimensions[level]
     
@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
     #getting ROI
     print(">> Identifying ROI\n")
-    makeROI(tumor_slide, LEVEL, OUTPUT_MASK_DIR, O_KNL, C_KNL,  RECT)
+    createROI(tumor_slide, LEVEL, OUTPUT_MASK_DIR, O_KNL, C_KNL,  RECT)
     print("done\n")
 
     print(">> Create Patch Slide : level" + str(LEVEL) + "\n")
