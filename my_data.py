@@ -111,14 +111,23 @@ if __name__ == "__main__":
 
     list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
+    list_of_slidename = ["b_0"]
+
     for fn in list_of_slidename:
         slide = openslide.OpenSlide(fn)
         
+        region = _get_interest_region(slide)
+
         annotations = _get_annotation_from_xml(fn, level)
+        mask = _create_tumor_mask(annotations, level)
+        
+        patches, informs = _create_tumor_mask(annotations, mask, region)
+        
+        thumbnail = _create_thumbnail(slide, level)
+        _draw_tumor_pos_on_thumbnail(thumbnail, annotations)
+        _draw_patch_pos_on_thumbnail(thumbnail, patches)
 
-
-
-    
+          
 
 
 
