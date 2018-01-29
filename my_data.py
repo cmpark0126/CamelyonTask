@@ -202,7 +202,6 @@ return : dataset(tuple(set of patch, set of information of patch))
 def _create_dataset(slide, mask, interest_region):
     return (set_of_patch, inform_of_patch)
 
-
 if __name__ == "__main__":
     
 
