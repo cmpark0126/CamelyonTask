@@ -5,7 +5,7 @@ import cv2
 from xml.etree.ElementTree import parse
 from PIL import Image
 
-ROOT = "./intern_challenge"
+ROOT = "./Data"
 BASE_ANNO = "annotation"
 BASE_SLIDE = "slide"
 LEVEL = 4
@@ -51,7 +51,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
     close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
 
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, open_knl)
-    cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
+    # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_knl)
    
     print('Generating rectangular mask...')
@@ -80,7 +80,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
     
     print('Rectangular mask generated.')
 
-    cv2.imwrite("Data/Slide/ROI" , roi)
+    cv2.imwrite("result_of_interest_region.jpg", ori_img)
 
     return xmin, ymin, xmax-xmin, ymax-ymin
 
@@ -95,14 +95,14 @@ def _get_annotation_from_xml(path_for_annotation, downsamples):
     annotation_list = []
     annotation = []
     num_annotation = 0
-    tree = etree.parse(path_for_annotation)
+    tree = parse(path_for_annotation)
     root = tree.getroot()
 
     for Annotation in root.iter("Annotation"):
         for Coordinate in Annotation.iter("Coordinate"):
             x = round(float(Coordinate.attrib["X"])/downsamples)
             y = round(float(Coordinate.attrib["Y"])/downsamples)
-            annotation_list.append(x, y)
+            annotation_list.append((x, y))
         contourlist.append(np.asarray(annotation_list))
 
     return annotation
@@ -118,6 +118,7 @@ return : numpy array of tumor mask
 """
 def _create_tumor_mask(tumor_slide, level, annotation):
     maskslide = np.zeros(tumor_slide.level_dimensions[level][::-1])
+    cv2.imwrite("mask.jpg", maskslide)
     cv2.drawContours(maskslide, contourlist, -1, 255, -1)
     return maskslide
 
@@ -207,7 +208,7 @@ if __name__ == "__main__":
 
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
-    list_of_slidename = ["b_0"]
+    list_of_slidename = ["b_4"]
 
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
@@ -218,16 +219,16 @@ if __name__ == "__main__":
         print(path_for_annotation)
 
         slide = openslide.OpenSlide(path_for_slide)
-        downsamples = slide.level_downsamples[LEVEL]
+        downsamples = int(slide.level_downsamples[LEVEL])
 
         print(downsamples)
     
-        region = _get_interest_region(slide, level)
+        region = _get_interest_region(slide, LEVEL)
 
         print(region)
 
-        # annotation = _get_annotation_from_xml(path_for_annotation, downsamples)
-        # mask = _create_tumor_mask(slide, level, annotation)
+        annotation = _get_annotation_from_xml(path_for_annotation, downsamples)
+        mask = _create_tumor_mask(slide, level, annotation)
         
         # patches, informs = _create_tumor_mask(annotations, mask, region)
         
