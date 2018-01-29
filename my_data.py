@@ -185,8 +185,9 @@ return : thumbnail (numpy array)
 
 """
 def _draw_patch_pos_on_thunmbnail(thumbnail, patch_pos, downsamples):
-    x, y, w, h = patch_pos
-    cv2.rectangle(thubmnail, (int(x/downsamples), int(y/downsamples)), (int(x/downsamples) + int(w/downsamples), int(y/downsamples) + int(h/downsamples)))
+    for patch in patch_pos:
+        x, y, w, h = patch
+        cv2.rectangle(thubmnail, (int(x/downsamples), int(y/downsamples)), (int(x/downsamples) + int(w/downsamples), int(y/downsamples) + int(h/downsamples)))
     return thumbnail
 
 
