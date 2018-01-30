@@ -244,7 +244,7 @@ class CAMELYON(data.Dataset):
                 patch_fn = str(x)+"_"+str(y)+"_"+str(is_tumor)+".png"
                 patch.save(os.path.join(self.patch_path, patch_fn))
                 i = i + 1
-                print("\rPercentage : %d / %d" %(i, self.num_of_patch * 2), end="")
+                print("\rPercentage : %d / %d" %(i, self.num_of_patch), end="")
             print("\n")
 
         return set_of_patch, set_of_pos
@@ -341,6 +341,6 @@ if __name__ == "__main__":
     length = len(list_of_slide)
 
     for i in range(length):
-        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3)
+        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3, save_patch_image=True)
         test.draw_tumor_pos_on_thumbnail()
         test.draw_patch_pos_on_thumbnail()
