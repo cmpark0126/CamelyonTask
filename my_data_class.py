@@ -42,23 +42,23 @@ class CAMELYON(data.Dataset):
         self.xml_path = os.path.join(self.root, self.base_folder_for_annotation)
 
         self.patch_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_patch)
-        self._check_path_existence(self.patch_path)
+        self.check_path_existence(self.patch_path)
 
         self.etc_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_etc)
-        self._check_path_existence(self.etc_path)
+        self.check_path_existence(self.etc_path)
 
 
 
         self.slide = openslide.OpenSlide(os.path.join(self.slide_path, self.slide_fn))
         self.downsamples = int(self.slide.level_downsamples[self.level])
-        self.annotation = self._get_annotation_from_xml()
+        self.annotation = self.get_annotation_from_xml()
 
-        self.tissue_mask = self._create_tissue_mask()
-        self.tumor_mask = self._create_tumor_mask()
+        self.tissue_mask = self.create_tissue_mask()
+        self.tumor_mask = self.create_tumor_mask()
 
-        self.set_of_patch, self.set_of_pos = self._create_dataset(save_patch_image)
+        self.set_of_patch, self.set_of_pos = self.create_dataset(save_patch_image)
 
-        self.thumbnail = self._create_thumbnail()
+        self.thumbnail = self.create_thumbnail()
 
 
     """
@@ -66,7 +66,7 @@ class CAMELYON(data.Dataset):
 
     return : tissue_mask (numpy_array)
     """
-    def _check_path_existence(self, dir_name):
+    def check_path_existence(self, dir_name):
         path = ""
 
         while(True):
@@ -90,7 +90,7 @@ class CAMELYON(data.Dataset):
 
     return : tissue_mask (numpy_array)
     """
-    def _create_tissue_mask(self, o_knl=5, c_knl=9):
+    def create_tissue_mask(self, o_knl=5, c_knl=9):
         col, row = self.slide.level_dimensions[self.level]
 
         ori_img = np.array(self.slide.read_region((0, 0), self.level, (col, row)))
@@ -128,7 +128,7 @@ class CAMELYON(data.Dataset):
 
     return : annotations (list of numpy)
     """
-    def _get_annotation_from_xml(self):
+    def get_annotation_from_xml(self):
 
         annotation = []
         num_annotation = 0
@@ -153,7 +153,7 @@ class CAMELYON(data.Dataset):
 
     return : numpy array of tumor mask
     """
-    def _create_tumor_mask(self):
+    def create_tumor_mask(self):
         tumor_mask = np.zeros(self.slide.level_dimensions[self.level][::-1])
         cv2.drawContours(tumor_mask, self.annotation, -1, 255, -1)
         cv2.imwrite(os.path.join(self.etc_path, "tumor_mask.jpg"), tumor_mask)
@@ -168,7 +168,7 @@ class CAMELYON(data.Dataset):
     return : label (int)
 
     """
-    def _determine_tumor(self, patch_pos):
+    def determine_tumor(self, patch_pos):
         x, y, w, h = patch_pos
         if self.percent > 1 or self.percent < 0:
             raise RuntimeError('Percent must be in 0 to 1')
@@ -187,7 +187,7 @@ class CAMELYON(data.Dataset):
 
     return : set of position(list)
     """
-    def _get_random_samples(self, mask, num_of_patch):
+    def get_random_samples(self, mask, num_of_patch):
         set_of_pos = []
         number_of_region = int(np.sum(mask)/255)
 
@@ -208,7 +208,7 @@ class CAMELYON(data.Dataset):
             i = (data % x - goleft) * self.downsamples
             j = (data // x - goup) * self.downsamples
             # percent
-            is_tumor = self._determine_tumor((i, j, self.patch_size[0], self.patch_size[1]))
+            is_tumor = self.determine_tumor((i, j, self.patch_size[0], self.patch_size[1]))
             set_of_pos.append((i, j, self.patch_size[0], self.patch_size[1], is_tumor))
 
         print(len(set_of_pos))
@@ -223,7 +223,7 @@ class CAMELYON(data.Dataset):
     return : dataset(tuple(set of patch, set of pos of patch))
 
     """
-    def _create_dataset(self, save_image=False):
+    def create_dataset(self, save_image=False):
 
         set_of_patch = []
         set_of_pos = []
@@ -231,8 +231,8 @@ class CAMELYON(data.Dataset):
         patch_in_tumormask = int(self.num_of_patch * self.ratio)
         patch_in_tissuemask = self.num_of_patch - patch_in_tumormask
 
-        set_of_pos_intumor = self._get_random_samples(self.tumor_mask, patch_in_tumormask)
-        set_of_pos_intissue = self._get_random_samples(self.tissue_mask, patch_in_tissuemask)
+        set_of_pos_intumor = self.get_random_samples(self.tumor_mask, patch_in_tumormask)
+        set_of_pos_intissue = self.get_random_samples(self.tissue_mask, patch_in_tissuemask)
 
         set_of_pos = set_of_pos_intumor + set_of_pos_intissue
 
@@ -256,7 +256,7 @@ class CAMELYON(data.Dataset):
     return : thumbnail (numpy array)
 
     """
-    def _create_thumbnail(self, save_image=True):
+    def create_thumbnail(self, save_image=True):
         col, row = self.slide.level_dimensions[self.level]
 
         thumbnail = self.slide.get_thumbnail((col, row))
@@ -272,16 +272,16 @@ class CAMELYON(data.Dataset):
     """
     param :
 
-    use : _create_thumbnail(slide, level)
+    use : create_thumbnail(slide, level)
 
     return : thumbnail (numpy array)
     """
-    def _draw_tumor_pos_on_thumbnail(self, reset_thumbnail=False):
+    def draw_tumor_pos_on_thumbnail(self, reset_thumbnail=False):
         cv2.drawContours(self.thumbnail, self.annotation, -1, (0, 255, 0), 4)
         cv2.imwrite(os.path.join(self.etc_path, "tumor_to_thumbnail.jpg"), self.thumbnail)
 
         if reset_thumbnail:
-            self.thumbnail = self._create_thumbnail()
+            self.thumbnail = self.create_thumbnail()
 
     """
     brief :
@@ -291,7 +291,7 @@ class CAMELYON(data.Dataset):
     return :
 
     """
-    def _draw_patch_pos_on_thumbnail(self, reset_thumbnail=False):
+    def draw_patch_pos_on_thumbnail(self, reset_thumbnail=False):
         num_of_tumor = 0
         num_of_normal = 0
         for pos in self.set_of_pos :
@@ -308,7 +308,7 @@ class CAMELYON(data.Dataset):
         cv2.imwrite(os.path.join(self.etc_path, "patch_pos_to_thumbnail.jpg"), self.thumbnail)
 
         if reset_thumbnail:
-            self.thumbnail = self._create_thumbnail()
+            self.thumbnail = self.create_thumbnail()
 
 
 """
@@ -316,7 +316,7 @@ param :
 
 return :
 """
-def _get_file_list(usage):
+def get_file_list(usage):
     if usage == "slide":
         print("get list of file at" + os.path.join(ROOT, usage))
         return os.listdir(os.path.join(ROOT, usage))
@@ -329,8 +329,8 @@ def _get_file_list(usage):
 
 if __name__ == "__main__":
 
-    list_of_slide = _get_file_list("slide")
-    list_of_annotation = _get_file_list("annotation")
+    list_of_slide = get_file_list("slide")
+    list_of_annotation = get_file_list("annotation")
 
     list_of_slide.sort()
     list_of_annotation.sort()
@@ -342,5 +342,5 @@ if __name__ == "__main__":
 
     for i in range(length):
         test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3)
-        test._draw_tumor_pos_on_thumbnail()
-        test._draw_patch_pos_on_thumbnail()
+        test.draw_tumor_pos_on_thumbnail()
+        test.draw_patch_pos_on_thumbnail()
