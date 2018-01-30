@@ -9,8 +9,6 @@ from PIL import Image
 import torch.utils.data as data
 
 ROOT = './Data'
-BASE_FOLDER_FOR_ANNOTATION = 'annotation'
-BASE_FOLDER_FOR_SLIDE = 'slide'
 
 class CAMELYON(data.Dataset):
     """
@@ -320,11 +318,11 @@ return :
 """
 def _get_file_list(usage):
     if usage == "slide":
-        print("get list of file at" + os.path.join(ROOT, BASE_FOLDER_FOR_SLIDE))
-        return os.listdir(os.path.join(ROOT, BASE_FOLDER_FOR_SLIDE))
+        print("get list of file at" + os.path.join(ROOT, usage))
+        return os.listdir(os.path.join(ROOT, usage))
     elif usage == "annotation":
-        print("get list of file at" + os.path.join(ROOT, BASE_FOLDER_FOR_ANNOTATION))
-        return os.listdir(os.path.join(ROOT, BASE_FOLDER_FOR_ANNOTATION))
+        print("get list of file at" + os.path.join(ROOT, usage))
+        return os.listdir(os.path.join(ROOT, usage))
     else:
         raise RuntimeError("invalid usage")
 
