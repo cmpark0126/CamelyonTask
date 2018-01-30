@@ -203,8 +203,8 @@ class CAMELYON(data.Dataset):
 
         x, y = self.slide.level_dimensions[self.level]
 
-        goleft = int(self.patch_size[0]/2)
-        goup = int(self.patch_size[1]/2)
+        goleft = int(self.patch_size[0]/(2*self.downsamples))
+        goup = int(self.patch_size[1]/(2*self.downsamples))
 
         for data in dataset_number:
             i = (data % x - goleft) * self.downsamples
