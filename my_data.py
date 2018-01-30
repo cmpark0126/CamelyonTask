@@ -243,6 +243,7 @@ if __name__ == "__main__":
     list_of_slidename = ["b_2"]
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
+        print(root)
         path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif"
         path_for_annotation = os.path.join(root, BASE_ANNO, fn) + ".xml"
 
