@@ -7,10 +7,9 @@ from xml.etree.ElementTree import parse
 from PIL import Image
 
 ROOT = "./Data"
-BASE_ANNO = "annotation"
-BASE_SLIDE = "slide"
+BASE_ANNO = "/annotation"
+BASE_SLIDE = "/slide"
 LEVEL = 4
-
 """
 param : root (string) 
         base_folder (string)
@@ -64,7 +63,6 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
     xmin = sys.maxsize
     ymin = sys.maxsize
 
-    print("in makeRECT")
     for i in contours:
         x,y,w,h = cv2.boundingRect(i)
         if(x > xmax):
@@ -271,8 +269,7 @@ if __name__ == "__main__":
 
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
-    list_of_slidename = ["b_2"]
-
+list_of_slidename = ["b_1"]
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
         path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif" 
@@ -281,7 +278,7 @@ if __name__ == "__main__":
         print(path_for_slide)
         print(path_for_annotation)
 
-        slide = openslide.OpenSlide(path_for_slide)
+        slide = openslide.OpenSlide("Data" + path_for_slide)
         downsamples = int(slide.level_downsamples[LEVEL])
 
         print(downsamples)
@@ -290,7 +287,7 @@ if __name__ == "__main__":
 
         print(region)
 
-        annotation = _get_annotation_from_xml(path_for_annotation, downsamples)
+        annotation = _get_annotation_from_xml("Data" + path_for_annotation, downsamples)
         
         print(type(annotation))
 
