@@ -111,14 +111,14 @@ class CAMELYON(data.Dataset):
         #cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_RawBW_int.jpg", roi)
 
         # Creation of opening and closing kernels
-        open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
-        close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
+        #open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
+        #close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
         
         
 
-        tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_OPEN, open_knl)
+        #tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_OPEN, open_knl)
         # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
-        tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, close_knl)
+        #tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, close_knl)
 
         cv2.imwrite(os.path.join(self.etc_path, "tissue_mask.jpg"), tissue_mask)
 
