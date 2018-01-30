@@ -234,7 +234,7 @@ class CAMELYON(data.Dataset):
         patch_in_tissuemask = self.num_of_patch - patch_in_tumormask
 
         set_of_pos_intumor = self.get_random_samples(self.tumor_mask, patch_in_tumormask)
-        set_of_pos_intissue = self.get_random_samples(self.tissue_mask, patch_in_tissuemask)
+        set_of_pos_intissue = self.get_random_samples(self.tissue_mask - self.tumor_mask, patch_in_tissuemask)
 
         set_of_pos = set_of_pos_intumor + set_of_pos_intissue
 
