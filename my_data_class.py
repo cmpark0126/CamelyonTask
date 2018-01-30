@@ -27,7 +27,7 @@ class CAMELYON(data.Dataset):
     base_folder_for_patch = 'patch'
     base_folder_for_etc = 'etc'
 
-    def __init__(self, root, slide_fn, xml_fn, level, num_of_patch, patch_size, ratio=0.5, percent=0.1):
+    def __init__(self, root, slide_fn, xml_fn, level, num_of_patch, patch_size, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
 
         self.root = os.path.expanduser(root)
         self.level = level
@@ -37,8 +37,8 @@ class CAMELYON(data.Dataset):
         self.num_of_patch = num_of_patch
         self.patch_size = patch_size
 
-        self.ratio = ratio
-        self.percent = percent
+        self.ratio = tumor_ratio
+        self.percent = determine_percent
 
         self.slide_path = os.path.join(self.root, self.base_folder_for_slide)
         self.xml_path = os.path.join(self.root, self.base_folder_for_annotation)
@@ -58,11 +58,16 @@ class CAMELYON(data.Dataset):
         self.tissue_mask = self._create_tissue_mask()
         self.tumor_mask = self._create_tumor_mask()
 
-        self.set_of_patch, self.set_of_pos = self._create_dataset()
+        self.set_of_patch, self.set_of_pos = self._create_dataset(save_patch_image)
 
         self.thumbnail = self._create_thumbnail()
 
 
+    """
+    param :
+
+    return : tissue_mask (numpy_array)
+    """
     def _check_path_existence(self, dir_name):
         path = ""
 
@@ -158,11 +163,6 @@ class CAMELYON(data.Dataset):
 
 
     """
-    brief : if patch represent tumor label value is 1, else 0
-    ROOT = "./Data"
-    BASE_ANNO = "annotation"
-    BASE_SLIDE = "slide"
-    LEVEL = 4
     param : mask (numpy)
             patch_pos (tuple(x, y, width, height))
             percent (what percent will you determine as tumor)
@@ -201,7 +201,7 @@ class CAMELYON(data.Dataset):
         np.random.shuffle(sorting)
         dataset_number = sorting[:num_of_patch].astype(int)
 
-        x, y = self.slide.level_dimensions[self.level]
+        x, _ = self.slide.level_dimensions[self.level]
 
         goleft = int(self.patch_size[0]/(2*self.downsamples))
         goup = int(self.patch_size[1]/(2*self.downsamples))
@@ -243,7 +243,7 @@ class CAMELYON(data.Dataset):
             for pos in set_of_pos:
                 x, y, w, h, is_tumor = pos
                 patch = self.slide.read_region((x, y), 0, (w, h))
-                patch_fn = str(x)+"_"+str(y)+".png"
+                patch_fn = str(x)+"_"+str(y)+"_"+str(is_tumor)+".png"
                 patch.save(os.path.join(self.patch_path, patch_fn))
                 i = i + 1
                 print("\rPercentage : %d / %d" %(i, self.num_of_patch * 2), end="")
@@ -264,7 +264,7 @@ class CAMELYON(data.Dataset):
         thumbnail = self.slide.get_thumbnail((col, row))
 
         thumbnail = np.array(thumbnail)
-        
+
         if save_image:
             cv2.imwrite(os.path.join(self.etc_path, "thumbnail.jpg"), thumbnail)
 
@@ -290,7 +290,7 @@ class CAMELYON(data.Dataset):
 
     param :
 
-    return : thumbnail (numpy array)
+    return :
 
     """
     def _draw_patch_pos_on_thumbnail(self, reset_thumbnail=False):
@@ -314,10 +314,9 @@ class CAMELYON(data.Dataset):
 
 
 """
-param : root (string)
-        base_folder (string)
+param :
 
-return : slide_list (string)
+return :
 """
 def _get_file_list(usage):
     if usage == "slide":
@@ -334,16 +333,16 @@ if __name__ == "__main__":
 
     list_of_slide = _get_file_list("slide")
     list_of_annotation = _get_file_list("annotation")
-    
+
     list_of_slide.sort()
     list_of_annotation.sort()
 
     print(list_of_slide)
     print(list_of_annotation)
 
+    length = len(list_of_slide)
 
-    for i in range(15):
-        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), ratio=0.1, percent=0.1)
+    for i in range(length):
+        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3)
         test._draw_tumor_pos_on_thumbnail()
         test._draw_patch_pos_on_thumbnail()
-
