@@ -6,6 +6,8 @@ import openslide
 import cv2
 from xml.etree.ElementTree import parse
 from PIL import Image
+import pickle
+
 import torch.utils.data as data
 
 ROOT = './Data'
@@ -113,8 +115,8 @@ class CAMELYON(data.Dataset):
         # Creation of opening and closing kernels
         #open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
         #close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
-        
-        
+
+
 
         #tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_OPEN, open_knl)
         # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
@@ -211,7 +213,7 @@ class CAMELYON(data.Dataset):
             j = (data // x - goup) * self.downsamples
             # percent
             is_tumor = self.determine_tumor((i, j, self.patch_size[0], self.patch_size[1]))
-            set_of_pos.append((i, j, self.patch_size[0], self.patch_size[1], is_tumor))
+            set_of_pos.append([is_tumor, i, j, self.patch_size[0], self.patch_size[1]])
 
         print(len(set_of_pos))
         return set_of_pos
@@ -239,12 +241,24 @@ class CAMELYON(data.Dataset):
         set_of_pos = set_of_pos_intumor + set_of_pos_intissue
 
         if save_image:
+            print("Save patch image")
             i = 0
             for pos in set_of_pos:
-                x, y, w, h, is_tumor = pos
+                is_tumor, x, y, w, h = pos
                 patch = self.slide.read_region((x, y), 0, (w, h))
+                set_of_patch.append(np.array(patch))
                 patch_fn = str(x)+"_"+str(y)+"_"+str(is_tumor)+".png"
                 patch.save(os.path.join(self.patch_path, patch_fn))
+                i = i + 1
+                print("\rPercentage : %d / %d" %(i, self.num_of_patch), end="")
+            print("\n")
+        else:
+            print("Do not save patch image")
+            i = 0
+            for pos in set_of_pos:
+                is_tumor, x, y, w, h = pos
+                patch = self.slide.read_region((x, y), 0, (w, h))
+                set_of_patch.append(np.array(patch))
                 i = i + 1
                 print("\rPercentage : %d / %d" %(i, self.num_of_patch), end="")
             print("\n")
@@ -297,7 +311,7 @@ class CAMELYON(data.Dataset):
         num_of_tumor = 0
         num_of_normal = 0
         for pos in self.set_of_pos :
-            x, y, w, h, is_tumor= pos
+            is_tumor, x, y, w, h= pos
             if is_tumor:
                 cv2.rectangle(self.thumbnail, (int(x/self.downsamples), int(y/self.downsamples)), (int(x/self.downsamples) + int(w/self.downsamples), int(y/self.downsamples) + int(h/self.downsamples)),(255,0,0), 4)
                 num_of_tumor = num_of_tumor + 1
@@ -319,14 +333,27 @@ param :
 return :
 """
 def get_file_list(usage):
-    if usage == "slide":
+    if usage == "slide" or usage == "annotation":
         print("get list of file at" + os.path.join(ROOT, usage))
-        return os.listdir(os.path.join(ROOT, usage))
-    elif usage == "annotation":
-        print("get list of file at" + os.path.join(ROOT, usage))
-        return os.listdir(os.path.join(ROOT, usage))
+        file_list = os.listdir(os.path.join(ROOT, usage))
+        file_list.sort()
+        return file_list
     else:
         raise RuntimeError("invalid usage")
+
+# def create_binary_file(batch_size):
+#     list_of_slide = get_file_list("slide")
+#     list_of_annotation = get_file_list("annotation")
+#
+#     length = len(list_of_slide)
+#
+#     dataset = {}
+#
+#     set_of_patch = []
+#
+#     set_of_label = []
+#
+#     for
 
 
 if __name__ == "__main__":
@@ -334,16 +361,12 @@ if __name__ == "__main__":
     list_of_slide = get_file_list("slide")
     list_of_annotation = get_file_list("annotation")
 
-    list_of_slide.sort()
-    list_of_annotation.sort()
-
     print(list_of_slide)
     print(list_of_annotation)
 
     length = len(list_of_slide)
 
-    #for i in range(length):
-    #test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3, save_patch_image=True)
-    test = CAMELYON(ROOT,"b_2.tif", "b_2.xml", 4, 1000, (304, 304), 0.1, 0.3, True)
+    test = CAMELYON(ROOT,"b_2.tif", "b_2.xml", 4, 1000, (304, 304), 0.1, 0.3, False)
+
     test.draw_tumor_pos_on_thumbnail()
     test.draw_patch_pos_on_thumbnail()
