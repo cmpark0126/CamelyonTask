@@ -159,6 +159,8 @@ def _create_thumbnail(slide, level):
     
     thumbnail = np.array(thumbnail)
     
+    cv2.imwrite("thumbnail.jpg", thumbnail)
+
     return thumbnail
 
 
@@ -171,7 +173,8 @@ use : _create_thumbnail(slide, level)
 return : thumbnail (numpy array)
 """
 def _draw_tumor_pos_on_thumbnail(thumbnail, annotation):
-    cv2.drawContours(thumbnail, contourlist, -1, (0, 255, 0), 2)
+    cv2.drawContours(thumbnail, annotation, -1, (0, 255, 0), 2)
+    cv2.imwrite("tumor_to_thumbnail.jpg", thumbnail)
     return thumbnail
 
 
@@ -234,10 +237,11 @@ if __name__ == "__main__":
 
         mask = _create_tumor_mask(slide, LEVEL, annotation)
         
-        # patches, informs = _create_tumor_mask(annotations, mask, region)
+        # patches, informs = _create_tumor_mask(annotation, mask, region)
         
-        # thumbnail = _create_thumbnail(slide, level)
-        # _draw_tumor_pos_on_thumbnail(thumbnail, annotation)
+        thumbnail = _create_thumbnail(slide, LEVEL)
+        
+        _draw_tumor_pos_on_thumbnail(thumbnail, annotation)
         # _draw_patch_pos_on_thumbnail(thumbnail, patches)
 
           
