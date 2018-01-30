@@ -34,7 +34,11 @@ class CAMELYON(data.Dataset):
         self.slide_fn = slide_fn
         self.xml_fn = xml_fn
 
+        self.num_of_patch = num_of_patch
         self.patch_size = patch_size
+
+        self.ratio = ratio
+        self.percent = percent
 
         self.slide_path = os.path.join(self.root, self.base_folder_for_slide)
         self.xml_path = os.path.join(self.root, self.base_folder_for_annotation)
@@ -52,9 +56,7 @@ class CAMELYON(data.Dataset):
         self.tissue_mask = self._create_tissue_mask()
         self.tumor_mask = self._create_tumor_mask()
 
-        self.num_of_patch = num_of_patch
-        self.ratio = ratio
-        self.percent = percent
+
 
         self.set_of_patch, self.set_of_pos = self._create_dataset()
 
@@ -113,6 +115,8 @@ class CAMELYON(data.Dataset):
         # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
         tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, close_knl)
 
+        cv2.imwrite(os.path.join(self.etc_path, "tissue_mask.jpg"), tissue_mask)
+
         return tissue_mask
 
 
@@ -149,7 +153,7 @@ class CAMELYON(data.Dataset):
     def _create_tumor_mask(self):
         tumor_mask = np.zeros(self.slide.level_dimensions[self.level][::-1])
         cv2.drawContours(tumor_mask, self.annotation, -1, 255, -1)
-        cv2.imwrite("mask.jpg", tumor_mask)
+        cv2.imwrite(os.path.join(self.etc_path, "tumor_mask.jpg"), tumor_mask)
         return tumor_mask
 
 
