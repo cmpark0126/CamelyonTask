@@ -231,13 +231,12 @@ def _create_dataset(slide, mask, interest_region, patch_size, num_of_patch):
 
     return set_of_patch, set_of_pos
 
-
 if __name__ == "__main__":
     
 
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
-list_of_slidename = ["b_1"]
+    list_of_slidename = ["b_1"]
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
         path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif" 
