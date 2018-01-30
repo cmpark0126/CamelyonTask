@@ -1,4 +1,5 @@
 import os, sys
+import random
 import numpy as np
 import openslide
 import cv2
@@ -9,7 +10,6 @@ ROOT = "./Data"
 BASE_ANNO = "/annotation"
 BASE_SLIDE = "/slide"
 LEVEL = 4
-
 """
 param : root (string) 
         base_folder (string)
@@ -56,7 +56,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
    
     print('Generating rectangular mask...')
     
-    contours_thresh, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _ , contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     xmax = 0
     ymax = 0
@@ -80,8 +80,11 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
     print('Rectangular mask generated.')
 
     cv2.imwrite("result_of_interest_region.jpg", ori_img)
+    cv2.imwrite("tissue_mask.jpg", thresh)
 
-    return xmin, ymin, xmax-xmin, ymax-ymin
+    downsamples = int(slide.level_downsamples[level])
+
+    return thresh, (xmin * downsamples, ymin * downsamples, (xmax-xmin) * downsamples, (ymax-ymin) * downsamples)
 
 """
 param : slide name (string)
@@ -187,10 +190,14 @@ param : thumbnail (numpy array)
 return : thumbnail (numpy array)
 
 """
-def _draw_patch_pos_on_thunmbnail(thumbnail, patch_pos, downsamples):
-    for patch in patch_pos:
-        x, y, w, h = patch
-        cv2.rectangle(thubmnail, (int(x/downsamples), int(y/downsamples)), (int(x/downsamples) + int(w/downsamples), int(y/downsamples) + int(h/downsamples)))
+def _draw_patch_pos_on_thumbnail(thumbnail, patch_pos, downsamples):
+    length = len(patch_pos)
+    for i in range(length):
+        x, y, w, h = patch_pos[i]
+        cv2.rectangle(thumbnail, (int(x/downsamples), int(y/downsamples)), (int(x/downsamples) + int(w/downsamples), int(y/downsamples) + int(h/downsamples)),(0,0,255), 4)
+        print("\rPercentage %d / %d" %(i+1, length), end="")
+    cv2.imwrite("patch_pos_to_thumbnail.jpg", thumbnail)
+    print('\n')
     return thumbnail
 
 
@@ -198,12 +205,31 @@ def _draw_patch_pos_on_thunmbnail(thumbnail, patch_pos, downsamples):
 param : slide file (openslide)
         mask file (numpy)
         interest_region (tuple(x, y, width, height))
+        num_of_patch (int)
        
-return : dataset(tuple(set of patch, set of information of patch))
+return : dataset(tuple(set of patch, set of pos of patch))
 
 """
-def _create_dataset(slide, mask, interest_region):
-    return (set_of_patch, inform_of_patch)
+def _create_dataset(slide, mask, interest_region, patch_size, num_of_patch): 
+    
+    pos_x, pos_y, width, height = interest_region
+
+    set_of_patch = []
+
+    set_of_pos = []
+
+    for i in range(num_of_patch):
+        x = random.randrange(pos_x, pos_x + width)
+        y = random.randrange(pos_y, pos_y + height)
+        patch = slide.read_region((x, y), 0, patch_size)
+        patch.save("./PATCH/" + str(x)+"_"+str(y)+".png")
+        # patch to numpy array
+        set_of_pos.append((x, y, patch_size[0], patch_size[1]))
+        print("\rPercentage : %d / %d" %(i+1, num_of_patch), end="")
+    
+    print("\n")
+
+    return set_of_patch, set_of_pos
 
 
 if __name__ == "__main__":
@@ -225,7 +251,7 @@ list_of_slidename = ["b_1"]
 
         print(downsamples)
     
-        region = _get_interest_region(slide, LEVEL)
+        tissue_mask, region = _get_interest_region(slide, LEVEL)
 
         print(region)
 
@@ -233,14 +259,14 @@ list_of_slidename = ["b_1"]
         
         print(type(annotation))
 
-        mask = _create_tumor_mask(slide, LEVEL, annotation)
+        tumor_mask = _create_tumor_mask(slide, LEVEL, annotation)
         
-        # patches, informs = _create_tumor_mask(annotation, mask, region)
+        set_of_patch, set_of_pos = _create_dataset(slide, tumor_mask, region, (304, 304), 20)
         
         thumbnail = _create_thumbnail(slide, LEVEL)
         
         _draw_tumor_pos_on_thumbnail(thumbnail, annotation)
-        # _draw_patch_pos_on_thumbnail(thumbnail, patches)
+        _draw_patch_pos_on_thumbnail(thumbnail, set_of_pos, downsamples)
 
           
 
