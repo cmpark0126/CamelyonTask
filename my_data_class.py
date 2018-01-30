@@ -49,6 +49,8 @@ class CAMELYON(data.Dataset):
         self.etc_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_etc)
         self._check_path_existence(self.etc_path)
 
+
+
         self.slide = openslide.OpenSlide(os.path.join(self.slide_path, self.slide_fn))
         self.downsamples = int(self.slide.level_downsamples[self.level])
         self.annotation = self._get_annotation_from_xml()
@@ -56,12 +58,10 @@ class CAMELYON(data.Dataset):
         self.tissue_mask = self._create_tissue_mask()
         self.tumor_mask = self._create_tumor_mask()
 
-
-
         self.set_of_patch, self.set_of_pos = self._create_dataset()
 
         self.thumbnail = self._create_thumbnail()
-        cv2.imwrite(os.path.join(self.etc_path, "thumbnail.jpg"), self.thumbnail)
+
 
     def _check_path_existence(self, dir_name):
         path = ""
@@ -258,12 +258,15 @@ class CAMELYON(data.Dataset):
     return : thumbnail (numpy array)
 
     """
-    def _create_thumbnail(self):
+    def _create_thumbnail(self, save_image=True):
         col, row = self.slide.level_dimensions[self.level]
 
         thumbnail = self.slide.get_thumbnail((col, row))
 
         thumbnail = np.array(thumbnail)
+        
+        if save_image:
+            cv2.imwrite(os.path.join(self.etc_path, "thumbnail.jpg"), thumbnail)
 
         return thumbnail
 
@@ -275,11 +278,12 @@ class CAMELYON(data.Dataset):
 
     return : thumbnail (numpy array)
     """
-    def _draw_tumor_pos_on_thumbnail(self):
+    def _draw_tumor_pos_on_thumbnail(self, reset_thumbnail=False):
         cv2.drawContours(self.thumbnail, self.annotation, -1, (0, 255, 0), 4)
         cv2.imwrite(os.path.join(self.etc_path, "tumor_to_thumbnail.jpg"), self.thumbnail)
 
-        self.thumbnail = self._create_thumbnail()
+        if reset_thumbnail:
+            self.thumbnail = self._create_thumbnail()
 
     """
     brief :
@@ -289,17 +293,24 @@ class CAMELYON(data.Dataset):
     return : thumbnail (numpy array)
 
     """
-    def _draw_patch_pos_on_thumbnail(self):
+    def _draw_patch_pos_on_thumbnail(self, reset_thumbnail=False):
+        num_of_tumor = 0
+        num_of_normal = 0
         for pos in self.set_of_pos :
             x, y, w, h, is_tumor= pos
             if is_tumor:
                 cv2.rectangle(self.thumbnail, (int(x/self.downsamples), int(y/self.downsamples)), (int(x/self.downsamples) + int(w/self.downsamples), int(y/self.downsamples) + int(h/self.downsamples)),(255,0,0), 4)
+                num_of_tumor = num_of_tumor + 1
             else:
                 cv2.rectangle(self.thumbnail, (int(x/self.downsamples), int(y/self.downsamples)), (int(x/self.downsamples) + int(w/self.downsamples), int(y/self.downsamples) + int(h/self.downsamples)),(0,0,255), 4)
+                num_of_normal = num_of_normal + 1
+
+        print("num_of_tumor", num_of_tumor, "num_of_normal", num_of_normal)
 
         cv2.imwrite(os.path.join(self.etc_path, "patch_pos_to_thumbnail.jpg"), self.thumbnail)
 
-        self.thumbnail = self._create_thumbnail()
+        if reset_thumbnail:
+            self.thumbnail = self._create_thumbnail()
 
 
 """
@@ -327,6 +338,6 @@ if __name__ == "__main__":
     print(list_of_slide)
     print(list_of_annotation)
 
-    test = CAMELYON(ROOT, "b_2.tif", "b_2.xml", 4, 10000, (304, 304), ratio=0.9, percent=0.1)
+    test = CAMELYON(ROOT, "b_2.tif", "b_2.xml", 4, 10000, (304, 304), ratio=0.1, percent=0.1)
     test._draw_tumor_pos_on_thumbnail()
     test._draw_patch_pos_on_thumbnail()
