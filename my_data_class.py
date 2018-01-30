@@ -279,7 +279,7 @@ class CAMELYON(data.Dataset):
         cv2.drawContours(self.thumbnail, self.annotation, -1, (0, 255, 0), 4)
         cv2.imwrite(os.path.join(self.etc_path, "tumor_to_thumbnail.jpg"), self.thumbnail)
 
-        self.thumbnail = self._create_thumbnail()
+        #self.thumbnail = self._create_thumbnail()
 
     """
     brief :
@@ -323,10 +323,14 @@ if __name__ == "__main__":
 
     list_of_slide = _get_file_list("slide")
     list_of_annotation = _get_file_list("annotation")
+    
+    list_of_slide.sort()
+    list_of_annotation.sort()
 
     print(list_of_slide)
     print(list_of_annotation)
 
-    test = CAMELYON(ROOT, "b_2.tif", "b_2.xml", 4, 10000, (304, 304), ratio=0.9, percent=0.1)
-    test._draw_tumor_pos_on_thumbnail()
-    test._draw_patch_pos_on_thumbnail()
+    for i in range(15):
+        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), ratio=0.1, percent=0.1)
+        test._draw_tumor_pos_on_thumbnail()
+        test._draw_patch_pos_on_thumbnail()
