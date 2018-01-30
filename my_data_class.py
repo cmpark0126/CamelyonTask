@@ -8,6 +8,8 @@ from xml.etree.ElementTree import parse
 from PIL import Image
 import torch.utils.data as data
 
+from multiprocessing import Process, Queue
+
 ROOT = './Data'
 
 class CAMELYON(data.Dataset):
@@ -328,6 +330,39 @@ def get_file_list(usage):
     else:
         raise RuntimeError("invalid usage")
 
+"""
+for multiproc
+
+"""
+def create_dataset(self, save_image=False):
+
+    set_of_patch = []
+    set_of_pos = []
+
+    patch_in_tumormask = int(self.num_of_patch * self.ratio)
+    patch_in_tissuemask = self.num_of_patch - patch_in_tumormask
+
+    set_of_pos_intumor = self.get_random_samples(self.tumor_mask, patch_in_tumormask)
+    set_of_pos_intissue = self.get_random_samples(self.tissue_mask - self.tumor_mask, patch_in_tissuemask)
+
+    set_of_pos = set_of_pos_intumor + set_of_pos_intissue
+    
+    q = Queue()  
+    procs = []
+
+    if save_image:
+        i = 0
+        for pos in set_of_pos:
+            x, y, w, h, is_tumor = pos
+
+            patch = self.slide.read_region((x, y), 0, (w, h))
+            patch_fn = str(x)+"_"+str(y)+"_"+str(is_tumor)+".png"
+            patch.save(os.path.join(self.patch_path, patch_fn))
+            i = i + 1
+            print("\rPercentage : %d / %d" %(i, self.num_of_patch), end="")
+            print("\n")
+
+    return set_of_patch, set_of_pos
 
 if __name__ == "__main__":
 
@@ -341,9 +376,9 @@ if __name__ == "__main__":
     print(list_of_annotation)
 
     length = len(list_of_slide)
-
-    #for i in range(length):
-    #test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3, save_patch_image=True)
-    test = CAMELYON(ROOT,"b_2.tif", "b_2.xml", 4, 1000, (304, 304), 0.1, 0.3, True)
-    test.draw_tumor_pos_on_thumbnail()
-    test.draw_patch_pos_on_thumbnail()
+    
+    for i in range(length):
+        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3, save_patch_image=False)
+    #test = CAMELYON(ROOT,"b_2.tif", "b_2.xml", 4, 1000, (304, 304), 0.1, 0.3, True)
+        test.draw_tumor_pos_on_thumbnail()
+        test.draw_patch_pos_on_thumbnail()
