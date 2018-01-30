@@ -11,9 +11,9 @@ BASE_ANNO = "/annotation"
 BASE_SLIDE = "/slide"
 LEVEL = 4
 """
-param : root (string) 
+param : root (string)
         base_folder (string)
-        
+
 return : slide_list (string)
 """
 def _get_tumor_slidename(root, base_folder):
@@ -23,14 +23,14 @@ def _get_tumor_slidename(root, base_folder):
 """
 param : slide file (openslide)
         level (int)
-        
+
 return : (x, y, width, height)
 """
-def _get_interest_region(slide, level, o_knl=5, c_knl=9):
+def _create_tissue_mask(slide, level, o_knl=5, c_knl=9):
     col, row = slide.level_dimensions[level]
-    
+
     ori_img = np.array(slide.read_region((0, 0), level, (col, row)))
-    
+
     # color scheme change RGBA->RGB->HSV
     img = cv2.cvtColor(ori_img, cv2.COLOR_RGBA2RGB)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
@@ -41,7 +41,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
     img = img[:,:,1]
 
     #roi[roi <= 150] = 0
-    
+
     # Saturation values -> BW
     ret, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     #cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_RawBW_int.jpg", roi)
@@ -52,39 +52,9 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
 
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, open_knl)
     # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_knl)
-   
-    print('Generating rectangular mask...')
-    
-    _ , contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    tissue_mask = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_knl)
 
-    xmax = 0
-    ymax = 0
-    xmin = sys.maxsize
-    ymin = sys.maxsize
-
-    for i in contours:
-        x,y,w,h = cv2.boundingRect(i)
-        if(x > xmax):
-            xmax = x
-        elif(x < xmin):
-            xmin = x
-
-        if(y > ymax):
-            ymax = y
-        elif(y < ymin):
-            ymin = y
-    
-    cv2.rectangle(ori_img, (xmin, ymin), (xmax, ymax), (0,0,255), 5)
-    
-    print('Rectangular mask generated.')
-
-    cv2.imwrite("result_of_interest_region.jpg", ori_img)
-    cv2.imwrite("tissue_mask.jpg", thresh)
-
-    downsamples = int(slide.level_downsamples[level])
-
-    return thresh, (xmin * downsamples, ymin * downsamples, (xmax-xmin) * downsamples, (ymax-ymin) * downsamples)
+    return tissue_mask
 
 """
 param : slide name (string)
@@ -98,7 +68,7 @@ def _get_annotation_from_xml(path_for_annotation, downsamples):
     num_annotation = 0
     tree = parse(path_for_annotation)
     root = tree.getroot()
-    
+
     for Annotation in root.iter("Annotation"):
         annotation_list = []
         for Coordinate in Annotation.iter("Coordinate"):
@@ -114,7 +84,7 @@ def _get_annotation_from_xml(path_for_annotation, downsamples):
 param : tumor_slide (openslide)
         level(int)
         annotations (list of numpy)
-        
+
 
 return : numpy array of tumor mask
 """
@@ -150,17 +120,17 @@ def _determine_tumor(mask, patch_pos, percent, downsamples):
 """
 param : slide file (openslide)
         level (int)
-        
+
 return : thumbnail (numpy array)
 
 """
 def _create_thumbnail(slide, level):
     col, row = slide.level_dimensions[level]
-    
+
     thumbnail = slide.get_thumbnail((col, row))
-    
+
     thumbnail = np.array(thumbnail)
-    
+
     cv2.imwrite("thumbnail.jpg", thumbnail)
 
     return thumbnail
@@ -181,7 +151,7 @@ def _draw_tumor_pos_on_thumbnail(thumbnail, annotation):
 
 
 """
-brief : 
+brief :
 
 param : thumbnail (numpy array)
         patch_pos (tuple(x, y, width, height))
@@ -238,12 +208,13 @@ param : slide file (openslide)
         interest_region (tuple(x, y, width, height))
         num_of_patch (int)
         ratio: ratio of tumor mask, 0~1 float
+
 return : dataset(tuple(set of patch, set of pos of patch))
 
 """
 
 def _create_dataset(slide, tumor_mask, tissue_mask, patch_size, num_of_patch, level, ratio): 
-      
+
     set_of_patch = []
     set_of_pos = []
     patch_in_tumormask = int(num_of_patch * ratio)
@@ -252,6 +223,7 @@ def _create_dataset(slide, tumor_mask, tissue_mask, patch_size, num_of_patch, le
 
     set_of_pos_intumor = _get_random_samples(slide, num_of_patch, patch_in_tumormask, level, patch_size)
     set_of_pos_intissue = _get_random_samples(slide, num_of_patch, patch_in_tissuemask, level, patch_size)
+
     """
         for i in range(num_of_patch):
             x = random.randrange(pos_x, pos_x + width)
@@ -261,23 +233,33 @@ def _create_dataset(slide, tumor_mask, tissue_mask, patch_size, num_of_patch, le
             # patch to numpy array
             set_of_pos.append((x, y, patch_size[0], patch_size[1]))
             print("\rPercentage : %d / %d" %(i+1, num_of_patch), end="")
-    
+
         print("\n")
     """
 
     set_of_pos = set_of_pos_intumor + set_of_pos_intissue
-    
+
     return set_of_patch, set_of_pos
+'''
+param:
+
+retunrn: list of file name
+
+'''
+def _get_list():
+    print("get list of file at" + ROOT + BASE_SLIDE)
+    return os.listdir(ROOT + BASE_SLIDE)
 
 if __name__ == "__main__":
-    
 
+
+    print(_get_list())
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
     list_of_slidename = ["b_2"]
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
-        path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif" 
+        path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif"
         path_for_annotation = os.path.join(root, BASE_ANNO, fn) + ".xml"
 
         print(path_for_slide)
@@ -287,30 +269,20 @@ if __name__ == "__main__":
         downsamples = int(slide.level_downsamples[LEVEL])
 
         print(downsamples)
-    
-        tissue_mask, region = _get_interest_region(slide, LEVEL)
+
+        tissue_mask = _create_tissue_mask(slide, LEVEL)
 
         print(region)
 
         annotation = _get_annotation_from_xml("Data" + path_for_annotation, downsamples)
-        
+
         print(type(annotation))
 
         tumor_mask = _create_tumor_mask(slide, LEVEL, annotation)
-        
+
         set_of_patch, set_of_pos = _create_dataset(slide, tumor_mask, tissue_mask, (304, 304), 1000, LEVEL)
-        
+
         thumbnail = _create_thumbnail(slide, LEVEL)
-        
+
         _draw_tumor_pos_on_thumbnail(thumbnail, annotation)
         _draw_patch_pos_on_thumbnail(thumbnail, set_of_pos, downsamples)
-
-          
-
-
-
-
-
-
-
-
