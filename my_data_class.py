@@ -10,8 +10,6 @@ import pickle
 
 import torch.utils.data as data
 
-ROOT = './Data'
-
 class CAMELYON(data.Dataset):
     """
     CAMELYON Dataset preprocessed by DEEPBIO
@@ -258,7 +256,7 @@ class CAMELYON(data.Dataset):
             for pos in set_of_pos:
                 is_tumor, x, y, w, h = pos
                 patch = self.slide.read_region((x, y), 0, (w, h))
-                set_of_patch.append(np.array(patch))
+                set_of_patch.append(np.array(patch)[:, :, :3])
                 i = i + 1
                 print("\rPercentage : %d / %d" %(i, self.num_of_patch), end="")
             print("\n")
@@ -334,39 +332,78 @@ return :
 """
 def get_file_list(usage):
     if usage == "slide" or usage == "annotation":
-        print("get list of file at" + os.path.join(ROOT, usage))
-        file_list = os.listdir(os.path.join(ROOT, usage))
+        print("get list of file at" + os.path.join("./Data", usage))
+        file_list = os.listdir(os.path.join("./Data", usage))
         file_list.sort()
         return file_list
     else:
         raise RuntimeError("invalid usage")
 
-# def create_binary_file(batch_size):
-#     list_of_slide = get_file_list("slide")
-#     list_of_annotation = get_file_list("annotation")
-#
-#     length = len(list_of_slide)
-#
-#     dataset = {}
-#
-#     set_of_patch = []
-#
-#     set_of_label = []
-#
-#     for
 
 
-if __name__ == "__main__":
+"""
+"""
+def save_obj(obj, root, number):
+    with open(os.path.join(root, "dataset", "test_patch_dataset" + str(number) + ".pkl"), 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+"""
+"""
+def load_obj(root, number):
+    with open(os.path.join(root, "dataset", "test_patch_dataset" + str(number) + ".pkl"), 'rb') as f:
+        return pickle.load(f)
+
+
+"""
+param : batch_size (int)
+
+return :
+"""
+def get_data_set(batch_size, root, level, patch_size, number, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
+    dataset = {}
+
+    set_of_patch = []
+    set_of_pos = []
 
     list_of_slide = get_file_list("slide")
-    list_of_annotation = get_file_list("annotation")
+    # list_of_annotation = get_file_list("annotation")
 
     print(list_of_slide)
-    print(list_of_annotation)
+    # print(list_of_annotation)
 
     length = len(list_of_slide)
 
-    test = CAMELYON(ROOT,"b_2.tif", "b_2.xml", 4, 1000, (304, 304), 0.1, 0.3, False)
+    if (batch_size % length) != 0:
+        RuntimeError("invalid param")
 
-    test.draw_tumor_pos_on_thumbnail()
-    test.draw_patch_pos_on_thumbnail()
+    mini_batch = int(batch_size / length)
+
+    for slide in list_of_slide:
+        print(slide, "work...")
+        data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, mini_batch, patch_size, tumor_ratio, determine_percent, save_patch_image)
+
+        set_of_patch += data.set_of_patch
+        set_of_pos += data.set_of_pos
+
+    set_of_patch = np.asarray(set_of_patch)
+    set_of_pos = np.asarray(set_of_pos)
+
+    print("set_of_patch", set_of_patch.shape)
+    print("set_of_pos", set_of_pos.shape)
+
+    dataset["patch"] = set_of_patch
+    dataset["label"] = set_of_pos
+
+    save_obj(dataset, root, number)
+
+    return dataset
+
+
+if __name__ == "__main__":
+    get_data_set(100, "./Data", 4, (304, 304), 0)
+
+    # 유지
+    entry = load_obj("./Data", 0)
+
+    print(entry['patch'].shape)
+    print(entry['label'].shape)
