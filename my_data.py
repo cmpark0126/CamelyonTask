@@ -235,7 +235,6 @@ def _create_dataset(slide, tumor_mask, tissue_mask, patch_size, num_of_patch, le
 
     return set_of_patch, set_of_pos
 
-
 if __name__ == "__main__":
 
 
