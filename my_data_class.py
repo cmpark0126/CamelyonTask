@@ -113,6 +113,8 @@ class CAMELYON(data.Dataset):
         # Creation of opening and closing kernels
         open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
         close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
+        
+        
 
         tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_OPEN, open_knl)
         # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
@@ -340,7 +342,8 @@ if __name__ == "__main__":
 
     length = len(list_of_slide)
 
-    for i in range(length):
-        test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3, save_patch_image=True)
-        test.draw_tumor_pos_on_thumbnail()
-        test.draw_patch_pos_on_thumbnail()
+    #for i in range(length):
+    #test = CAMELYON(ROOT,list_of_slide[i] ,list_of_annotation[i] , 4, 1000, (304, 304), tumor_ratio=0.1, determine_percent=0.3, save_patch_image=True)
+    test = CAMELYON(ROOT,"b_2.tif", "b_2.xml", 4, 1000, (304, 304), 0.1, 0.3, True)
+    test.draw_tumor_pos_on_thumbnail()
+    test.draw_patch_pos_on_thumbnail()
