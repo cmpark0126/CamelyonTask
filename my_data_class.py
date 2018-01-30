@@ -27,7 +27,7 @@ class CAMELYON(data.Dataset):
     base_folder_for_patch = 'patch'
     base_folder_for_etc = 'etc'
 
-    def __init__(self, root, slide_fn, xml_fn, level, patch_size, num_of_patch, ratio):
+    def __init__(self, root, slide_fn, xml_fn, level, num_of_patch, patch_size, ratio=0.5, percent=0.1):
 
         self.root = os.path.expanduser(root)
         self.level = level
@@ -54,6 +54,7 @@ class CAMELYON(data.Dataset):
 
         self.num_of_patch = num_of_patch
         self.ratio = ratio
+        self.percent = percent
 
         self.set_of_patch, self.set_of_pos = self._create_dataset()
 
@@ -165,16 +166,15 @@ class CAMELYON(data.Dataset):
     return : label (int)
 
     """
-    # def _determine_tumor(mask, patch_pos, percent, downsamples):
-    #     x, y, w, h = patch_pos
-    #     if percent > 1 or percent < 0:
-    #         raise RuntimeError('Percent must be in 0 to 1')
-    #     maskofpatch = mask[int(y/downsamples): int(y/downsamples) + int(h/downsamples), int(x/downsamples): int(x/downsamples) + int(w/downsamples)]
-    #     if np.sum(maskofpatch) > percent * 255 * int(h/downsamples) * int(w/downsamples):
-    #         label_num = 1
-    #     else:
-    #         label_num = 0
-    #     return label_numROOT = "./Data"
+    def _determine_tumor(self, patch_pos):
+        x, y, w, h = patch_pos
+        if self.percent > 1 or self.percent < 0:
+            raise RuntimeError('Percent must be in 0 to 1')
+        maskofpatch = self.tumor_mask[int(y/self.downsamples): int(y/self.downsamples) + int(h/self.downsamples), int(x/self.downsamples): int(x/self.downsamples) + int(w/self.downsamples)]
+        if np.sum(maskofpatch) > self.percent * 255 * int(h/self.downsamples) * int(w/self.downsamples):
+            return 1
+        else:
+            return 0
 
     """
     param : slide file (openslide)
@@ -185,17 +185,17 @@ class CAMELYON(data.Dataset):
 
     return : set of position(list)
     """
-    def _get_random_samples(self, mask):
+    def _get_random_samples(self, mask, num_of_patch):
         set_of_pos = []
-        numberofregion = int(np.sum(mask)/255)
+        number_of_region = int(np.sum(mask)/255)
 
-        if numberofregion < self.num_of_patch:
+        if number_of_region < num_of_patch:
             raise RuntimeError('Random size is bigger than number of pixels in region')
 
         mask = np.reshape(mask, -1)
-        sorting = np.argsort(mask)[::-1][:numberofregion]
+        sorting = np.argsort(mask)[::-1][:number_of_region]
         np.random.shuffle(sorting)
-        dataset_number = sorting[:self.num_of_patch].astype(int)
+        dataset_number = sorting[:num_of_patch].astype(int)
 
         x, y = self.slide.level_dimensions[self.level]
 
@@ -203,9 +203,11 @@ class CAMELYON(data.Dataset):
         goup = int(self.patch_size[1]/2)
 
         for data in dataset_number:
-            i = data % x - goleft
-            j = data // x - goup
-            set_of_pos.append((i * self.downsamples, j * self.downsamples, self.patch_size[0], self.patch_size[1]))
+            i = (data % x - goleft) * self.downsamples
+            j = (data // x - goup) * self.downsamples
+            # percent
+            is_tumor = self._determine_tumor((i, j, self.patch_size[0], self.patch_size[1]))
+            set_of_pos.append((i, j, self.patch_size[0], self.patch_size[1], is_tumor))
 
         print(len(set_of_pos))
         return set_of_pos
@@ -219,20 +221,23 @@ class CAMELYON(data.Dataset):
     return : dataset(tuple(set of patch, set of pos of patch))
 
     """
-    def _create_dataset(self, save_image=True):
+    def _create_dataset(self, save_image=False):
 
         set_of_patch = []
         set_of_pos = []
 
-        set_of_pos_intumor = self._get_random_samples(self.tumor_mask)
-        set_of_pos_intissue = self._get_random_samples(self.tissue_mask)
+        patch_in_tumormask = int(self.num_of_patch * self.ratio)
+        patch_in_tissuemask = self.num_of_patch - patch_in_tumormask
+
+        set_of_pos_intumor = self._get_random_samples(self.tumor_mask, patch_in_tumormask)
+        set_of_pos_intissue = self._get_random_samples(self.tissue_mask, patch_in_tissuemask)
 
         set_of_pos = set_of_pos_intumor + set_of_pos_intissue
 
         if save_image:
             i = 0
             for pos in set_of_pos:
-                x, y, w, h = pos
+                x, y, w, h, is_tumor = pos
                 patch = self.slide.read_region((x, y), 0, (w, h))
                 patch_fn = str(x)+"_"+str(y)+".png"
                 patch.save(os.path.join(self.patch_path, patch_fn))
@@ -282,8 +287,11 @@ class CAMELYON(data.Dataset):
     """
     def _draw_patch_pos_on_thumbnail(self):
         for pos in self.set_of_pos :
-            x, y, w, h = pos
-            cv2.rectangle(self.thumbnail, (int(x/self.downsamples), int(y/self.downsamples)), (int(x/self.downsamples) + int(w/self.downsamples), int(y/self.downsamples) + int(h/self.downsamples)),(0,0,255), 4)
+            x, y, w, h, is_tumor= pos
+            if is_tumor:
+                cv2.rectangle(self.thumbnail, (int(x/self.downsamples), int(y/self.downsamples)), (int(x/self.downsamples) + int(w/self.downsamples), int(y/self.downsamples) + int(h/self.downsamples)),(255,0,0), 4)
+            else:
+                cv2.rectangle(self.thumbnail, (int(x/self.downsamples), int(y/self.downsamples)), (int(x/self.downsamples) + int(w/self.downsamples), int(y/self.downsamples) + int(h/self.downsamples)),(0,0,255), 4)
 
         cv2.imwrite(os.path.join(self.etc_path, "patch_pos_to_thumbnail.jpg"), self.thumbnail)
 
@@ -315,6 +323,6 @@ if __name__ == "__main__":
     print(list_of_slide)
     print(list_of_annotation)
 
-    test = CAMELYON(ROOT, "b_2.tif", "b_2.xml", 4, (304, 304), 100, 0.8)
+    test = CAMELYON(ROOT, "b_2.tif", "b_2.xml", 4, 10000, (304, 304), ratio=0.9, percent=0.1)
     test._draw_tumor_pos_on_thumbnail()
     test._draw_patch_pos_on_thumbnail()
