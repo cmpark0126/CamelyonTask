@@ -86,7 +86,7 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
 
     downsamples = int(slide.level_downsamples[level])
 
-    return xmin * downsamples, ymin * downsamples, (xmax-xmin) * downsamples, (ymax-ymin) * downsamples
+    return thresh, (xmin * downsamples, ymin * downsamples, (xmax-xmin) * downsamples, (ymax-ymin) * downsamples)
 
 """
 param : slide name (string)
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
         print(downsamples)
     
-        region = _get_interest_region(slide, LEVEL)
+        tissue_mask, region = _get_interest_region(slide, LEVEL)
 
         print(region)
 
@@ -262,9 +262,9 @@ if __name__ == "__main__":
         
         print(type(annotation))
 
-        mask = _create_tumor_mask(slide, LEVEL, annotation)
+        tumor_mask = _create_tumor_mask(slide, LEVEL, annotation)
         
-        set_of_patch, set_of_pos = _create_dataset(slide, mask, region, (304, 304), 1000)
+        set_of_patch, set_of_pos = _create_dataset(slide, tumor_mask, region, (304, 304), 20)
         
         thumbnail = _create_thumbnail(slide, LEVEL)
         
