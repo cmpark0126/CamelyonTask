@@ -199,7 +199,36 @@ def _draw_patch_pos_on_thumbnail(thumbnail, patch_pos, downsamples):
     cv2.imwrite("patch_pos_to_thumbnail.jpg", thumbnail)
     print('\n')
     return thumbnail
+"""
+param : slide file (openslide)
+        num_of_patch (int)
+        mask file (numpy)
+        level (integer)
+        patch_size (integer 2 tuple)
 
+return : set of position(list)
+"""
+def _get_random_samples(slide, num_of_patch, mask, level, patch_size):
+    set_of_pos = []
+    numberofregion = int(np.sum(mask)/255)
+    if numberofregion < num_of_patch:
+        raise RuntimeError('Random size is bigger than number of pixels in region')
+    mask = np.reshape(mask, -1)
+    sorting = np.argsort(mask)[::-1]
+    sorting = sorting[:numberofregion]
+    np.random.shuffle(sorting)
+    dataset_number = sorting[:num_of_patch].astype(int)
+    x, y = slide.level_dimensions[level]
+    downsamples = int(slide.level_downsamples[level])
+    goleft = int(patch_size[0]/2)
+    goup = int(patch_size[1]/2)
+    for data in dataset_number:
+        i = data % x - goleft
+        j = data // x - goup
+        set_of_pos.append((i * downsamples, j * downsamples, patch_size[0], patch_size[1]))
+        
+    print(len(set_of_pos))
+    return set_of_pos
 
 """
 param : slide file (openslide)
@@ -210,25 +239,30 @@ param : slide file (openslide)
 return : dataset(tuple(set of patch, set of pos of patch))
 
 """
-def _create_dataset(slide, mask, interest_region, patch_size, num_of_patch): 
-    
-    pos_x, pos_y, width, height = interest_region
 
+def _create_dataset(slide, tumor_mask, tissue_mask, patch_size, num_of_patch, level): 
+      
     set_of_patch = []
 
     set_of_pos = []
-
-    for i in range(num_of_patch):
-        x = random.randrange(pos_x, pos_x + width)
-        y = random.randrange(pos_y, pos_y + height)
-        patch = slide.read_region((x, y), 0, patch_size)
-        patch.save("./PATCH/" + str(x)+"_"+str(y)+".png")
-        # patch to numpy array
-        set_of_pos.append((x, y, patch_size[0], patch_size[1]))
-        print("\rPercentage : %d / %d" %(i+1, num_of_patch), end="")
     
-    print("\n")
+    set_of_pos_intumor = _get_random_samples(slide, num_of_patch, tumor_mask, level, patch_size)
+    set_of_pos_intissue = _get_random_samples(slide, num_of_patch, tissue_mask, level, patch_size)
+    """
+        for i in range(num_of_patch):
+            x = random.randrange(pos_x, pos_x + width)
+            y = random.randrange(pos_y, pos_y + height)
+            patch = slide.read_region((x, y), 0, patch_size)
+            patch.save("./PATCH/" + str(x)+"_"+str(y)+".png")
+            # patch to numpy array
+            set_of_pos.append((x, y, patch_size[0], patch_size[1]))
+            print("\rPercentage : %d / %d" %(i+1, num_of_patch), end="")
+    
+        print("\n")
+    """
 
+    set_of_pos = set_of_pos_intumor + set_of_pos_intissue
+    
     return set_of_patch, set_of_pos
 
 if __name__ == "__main__":
@@ -236,7 +270,7 @@ if __name__ == "__main__":
 
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
-    list_of_slidename = ["b_1"]
+    list_of_slidename = ["b_2"]
     for fn in list_of_slidename:
         root = os.path.expanduser(ROOT)
         path_for_slide = os.path.join(root, BASE_SLIDE, fn) + ".tif" 
@@ -260,7 +294,7 @@ if __name__ == "__main__":
 
         tumor_mask = _create_tumor_mask(slide, LEVEL, annotation)
         
-        set_of_patch, set_of_pos = _create_dataset(slide, tumor_mask, region, (304, 304), 20)
+        set_of_patch, set_of_pos = _create_dataset(slide, tumor_mask, tissue_mask, (304, 304), 1000, LEVEL)
         
         thumbnail = _create_thumbnail(slide, LEVEL)
         
