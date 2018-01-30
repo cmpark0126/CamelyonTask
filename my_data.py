@@ -234,10 +234,20 @@ def _create_dataset(slide, tumor_mask, tissue_mask, patch_size, num_of_patch, le
     set_of_pos = set_of_pos_intumor + set_of_pos_intissue
 
     return set_of_patch, set_of_pos
+'''
+param:
+
+retunrn: list of file name
+
+'''
+def _get_list():
+    print("get list of file at" + ROOT + BASE_SLIDE)
+    return os.listdir(ROOT + BASE_SLIDE)
 
 if __name__ == "__main__":
 
 
+    print(_get_list())
     # list_of_slidename = _get_tumor_slidename(ROOT, BASENAME)
 
     list_of_slidename = ["b_2"]
