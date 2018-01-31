@@ -34,10 +34,6 @@ use_cuda = torch.cuda.is_available()
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-accuracy_list = []
-loss_list = []
-epoch_list = []
-learningrate_list = []
 threshold = 0.7
 batch_size = 100
 
@@ -59,8 +55,8 @@ transform_test = transforms.Compose([
 
 
 trainset, valset, testset = get_dataset(transform_train, transform_test)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=2)
-valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=False, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=16)
+valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=False, num_workers=16)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
 
 
@@ -74,7 +70,6 @@ if args.resume:
     net = checkpoint['net']
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
-    stack = checkpoint['stack']
     
 else:
     print('==> Building model..')
@@ -90,7 +85,7 @@ criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-#scheduler = ReduceLOnPlateau(optimizer, 'min')
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
 # Training
 def train(epoch):
@@ -102,55 +97,54 @@ def train(epoch):
     total = 0
     
     for batch_idx, (inputs, targets) in enumerate(trainloader):
-        target_backup = targets
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor) 
-            inputs, targets, target_backup = inputs.cuda(), targets.cuda(), target_backup.cuda()
+            inputs, targets = inputs.cuda(), targets.cuda()
+       
         optimizer.zero_grad()
-        inputs, targets, target_backup = Variable(inputs), Variable(targets), Variable(target_backup)
+        inputs, targets = Variable(inputs), Variable(targets)
         outputs = net(inputs)
-        outputarray = torch.squeeze(outputs)
-        loss = criterion(outputarray, targets)
+        outputs = torch.squeeze(outputs)
+        loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
         thresholding = torch.ones(batch_size) * (1 - threshold)
-        outputarray = outputarray + Variable(thresholding.cuda())
-        outputarray = torch.floor(outputarray)
+        outputs = outputs + Variable(thresholding.cuda())
+        outputs = torch.floor(outputs)
+
         train_loss += loss.data[0]
         total += targets.size(0)
-        correct += outputarray.data.eq(targets.data).cpu().sum()
+        correct += outputs.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 def val(epoch):
     global best_acc
-    global accuracy_list
     global loss_list
-    global epoch_list
     
 
     net.eval()
+
     val_loss = 0
     correct = 0
     total = 0
     
     for batch_idx, (inputs, targets) in enumerate(valloader):
-        target_backup = targets       
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
-            inputs, targets, target_backup = inputs.cuda(), targets.cuda(), target_backup.cuda()
-        inputs, targets, target_backup = Variable(inputs, volatile=True), Variable(targets), Variable(target_backup)
+            inputs, targets = inputs.cuda(), targets.cuda()
+        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
         outputs = net(inputs)
-        outputarray = torch.squeeze(outputs)
-        loss = criterion(outputarray, targets)
+        outputs = torch.squeeze(outputs)
+        loss = criterion(outputs, targets)
         thresholding = torch.ones(batch_size) * (1 - threshold)
-        outputarray = outputarray + Variable(thresholding.cuda())
-        outputarray = torch.floor(outputarray)
+        outputs = outputs + Variable(thresholding.cuda())
+        outputs = torch.floor(outputs)
         
         val_loss += loss.data[0]
         total += targets.size(0)
-        correct += outputarray.data.eq(targets.data).cpu().sum()
+        correct += outputs.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
@@ -171,9 +165,6 @@ def val(epoch):
        
 
 
-    epoch_list.append(epoch)
-    accuracy_list.append(acc)
-    loss_list.append(val_loss/45)
 
 
 def test():
@@ -189,52 +180,29 @@ def test():
     net.eval()
 
     for batch_idx, (inputs, targets) in enumerate(testloader):
-        target_backup = targets       
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
-            inputs, targets, target_backup = inputs.cuda(), targets.cuda(), target_backup.cuda()
-        inputs, targets, target_backup = Variable(inputs, volatile=True), Variable(targets), Variable(target_backup) 
+            inputs, targets = inputs.cuda(), targets.cuda()
+        inputs, targets = Variable(inputs, volatile=True), Variable(targets) 
         outputs = net(inputs)
-        outputarray = torch.squeeze(outputs)
-        loss = criterion(outputarray, targets)
+        outputs = torch.squeeze(outputs)
+        loss = criterion(outputs, targets)
         thresholding = torch.ones(batch_size) * (1 - threshold)
-        outputarray = outputarray + Variable(thresholding.cuda())
-        outputarray = torch.floor(outputarray)
+        outputs = outputs + Variable(thresholding.cuda())
+        outputs = torch.floor(outputs)
         
         test_loss += loss.data[0]
         total += targets.size(0)
-        correct += outputs.data.eq(target_backup.data).cpu().sum()
-
+        correct += outputs.data.eq(targets.data).cpu().sum()
+       
         progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
 
 for epoch in range(start_epoch, start_epoch+20):
+    scheduler.step()
     train(epoch)
     val(epoch)
-#    scheduler.step(val_loss) 
 
-"""
-
-plt.plot(epoch_list, loss_list)
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.savefig('test_loss.png')
-
-plt.close()
-
-plt.plot(epoch_list, accuracy_list)
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.savefig('test_accuracy.png')
-
-plt.clf()
-
-plt.plot(epoch_list, learningrate_list)
-plt.ylabel('Learning rate')
-plt.xlabel('Epoch')
-plt.savefig('test_learingrate.png')
 # test()
-
-"""

@@ -110,7 +110,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AvgPool2d(10, stride=1)
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fullyconnected = nn.Linear(512 * block.expansion, num_classes)
         self.sigmoid = nn.Sigmoid()
 
         for m in self.modules():
@@ -154,7 +154,7 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x = self.fullyconnected(x)
         x = self.sigmoid(x)
         return x
 
@@ -191,11 +191,11 @@ def resnet50(pretrained=False, **kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), False)
     return model
 
 
-def resnet101(pretrained=False, **kwargs):
+def resnet101(pretrained=True, **kwargs):
     """Constructs a ResNet-101 model.
 
     Args:
@@ -203,7 +203,7 @@ def resnet101(pretrained=False, **kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet101']), False)
     return model
 
 
@@ -215,5 +215,5 @@ def resnet152(pretrained=False, **kwargs):
     """
     model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet152']), False)
     return model
