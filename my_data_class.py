@@ -58,31 +58,6 @@ class CAMELYON(data.Dataset):
 
         self.thumbnail = self.create_thumbnail()
 
-
-    # """
-    # param :
-    #
-    # return : tissue_mask (numpy_array)
-    # """
-    # def check_path_existence(self, dir_name):
-    #     path = ""
-    #
-    #     while(True):
-    #         split = dir_name.split('/', 1)
-    #
-    #         path = path + split[0] + '/'
-    #
-    #         if not os.path.isdir(path):
-    #             os.mkdir(path, )
-    #             print(path, "is created!")
-    #
-    #         if len(split) == 1:
-    #             break
-    #
-    #         dir_name = split[1]
-    #
-    #     return True
-
     """
     param :
 
@@ -93,30 +68,12 @@ class CAMELYON(data.Dataset):
 
         ori_img = np.array(self.slide.read_region((0, 0), self.level, (col, row)))
 
-        # color scheme change RGBA->RGB->HSV
         img = cv2.cvtColor(ori_img, cv2.COLOR_RGBA2RGB)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
 
-        # Out of the HSV channels, only the saturation values are kept. (gray,
-        # white, black pixels have low saturation values while tissue pixels
-        # have high saturation)
         img = img[:,:,1]
 
-        #roi[roi <= 150] = 0
-
-        # Saturation values -> BW
         ret, tissue_mask = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        #cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_RawBW_int.jpg", roi)
-
-        # Creation of opening and closing kernels
-        #open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
-        #close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
-
-
-
-        #tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_OPEN, open_knl)
-        # cv2.imwrite(output_dir + "/Level" + str(level) + "_ROI_OpenBW_int.jpg", thresh)
-        #tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, close_knl)
 
         cv2.imwrite(os.path.join(self.etc_path, "tissue_mask.jpg"), tissue_mask)
 
