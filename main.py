@@ -38,8 +38,8 @@ accuracy_list = []
 loss_list = []
 epoch_list = []
 learningrate_list = []
-
-
+threshold = 0.7
+batch_size = 100
 
 
 
@@ -59,9 +59,9 @@ transform_test = transforms.Compose([
 
 
 trainset, valset, testset = get_dataset(transform_train, transform_test)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=10, shuffle=True, num_workers=2)
-valloader = torch.utils.data.DataLoader(valset, batch_size=10, shuffle=False, num_workers=2)
-# testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=2)
+valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=False, num_workers=2)
+# testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
 
 
 
@@ -75,27 +75,17 @@ if args.resume:
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
     stack = checkpoint['stack']
-#    optimizer.load_state_dict(checkpoint['optimizer'])
     
 else:
     print('==> Building model..')
-    # net = VGG('VGG19')
     net = resnet101()
-    # net = PreActResNet18()
-    # net = GoogLeNet()
-   # net = DenseNet121()
-    # net = ResNeXt29_2x64d()
-    # net = MobileNet()
-    # net = DPN92()
-    # net = ShuffleNetG2()
-    # net = SENet18()
+    #net = DenseNet121()
 
 if use_cuda:
     net.cuda()
     net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
 
-#criterion = nn.CrossEntropyLoss()
 criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
@@ -105,7 +95,6 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9
 # Training
 def train(epoch):
     print('\nEpoch: %d' % epoch)
-
 
     net.train()
     train_loss = 0
@@ -120,17 +109,16 @@ def train(epoch):
         optimizer.zero_grad()
         inputs, targets, target_backup = Variable(inputs), Variable(targets), Variable(target_backup)
         outputs = net(inputs)
-        print(outputs, " is outputs")
-        print(targets, " is targets")
         outputarray = torch.squeeze(outputs)
         loss = criterion(outputarray, targets)
         loss.backward()
         optimizer.step()
-
+        thresholding = torch.ones(batch_size) * (1 - threshold)
+        outputarray = outputarray + Variable(thresholding.cuda())
+        outputarray = torch.floor(outputarray)
         train_loss += loss.data[0]
-        _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(target_backup.data).cpu().sum()
+        correct += outputarray.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
@@ -156,11 +144,13 @@ def val(epoch):
         outputs = net(inputs)
         outputarray = torch.squeeze(outputs)
         loss = criterion(outputarray, targets)
-
+        thresholding = torch.ones(batch_size) * (1 - threshold)
+        outputarray = outputarray + Variable(thresholding.cuda())
+        outputarray = torch.floor(outputarray)
+        
         val_loss += loss.data[0]
-        _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(target_backup.data).cpu().sum()
+        correct += outputarray.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
@@ -207,17 +197,20 @@ def test():
         outputs = net(inputs)
         outputarray = torch.squeeze(outputs)
         loss = criterion(outputarray, targets)
+        thresholding = torch.ones(batch_size) * (1 - threshold)
+        outputarray = outputarray + Variable(thresholding.cuda())
+        outputarray = torch.floor(outputarray)
+        
         test_loss += loss.data[0]
-        _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(target_backup.data).cpu().sum()
+        correct += outputs.data.eq(target_backup.data).cpu().sum()
 
         progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
 
-for epoch in range(start_epoch, start_epoch+2):
+for epoch in range(start_epoch, start_epoch+20):
     train(epoch)
     val(epoch)
 #    scheduler.step(val_loss) 
