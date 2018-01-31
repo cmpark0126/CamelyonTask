@@ -14,7 +14,6 @@ class CAMELYON_DATALOADER(data.Dataset):
     """
     Args:
         root (string): Root directory of dataset where directory
-            ``cifar-10-batches-py`` exists.
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
         transform (callable, optional): A function/transform that  takes in an PIL image
@@ -45,9 +44,6 @@ class CAMELYON_DATALOADER(data.Dataset):
             self.train_data = dataset['patch']
             self.train_labels = dataset['labels']
 
-            print(self.train_data.shape)
-            print(self.train_labels.shape)
-
         elif self.usage == 'val':
             filename = self.dataset_list[epoch % 2]
             fliepath = os.path.join(self.root, self.base_folder, self.usage, filename)
@@ -57,10 +53,6 @@ class CAMELYON_DATALOADER(data.Dataset):
 
             self.val_data = dataset['patch']
             self.val_labels = dataset['labels']
-
-            print(self.val_data.shape)
-            print(self.val_labels.shape)
-
         else:
             self.test_data = 0
             self.test_labels = 0
@@ -74,11 +66,11 @@ class CAMELYON_DATALOADER(data.Dataset):
             tuple: (image, target) where target is index of the target class.
         """
         if self.usage == 'train':
-            img, target = self.train_data[index], self.train_labels[index]
+            img, target = self.train_data[index], self.train_labels[index][0]
         elif self.usage == 'val':
-            img, target = self.val_data[index], self.val_labels[index]
+            img, target = self.val_data[index], self.val_labels[index][0]
         else:
-            img, target = self.test_data[index], self.test_labels[index]
+            img, target = self.test_data[index], self.test_labels[index][0]
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
@@ -113,7 +105,7 @@ class CAMELYON_DATALOADER(data.Dataset):
             raise RuntimeError("invalid usage")
 
 
-def get_dataset(train_transform, test_transform, epoch):
+def get_dataset(train_transform, test_transform, epoch=0):
     train_dataset = CAMELYON_DATALOADER('./Data',
                                         epoch,
                                         usage='train',
