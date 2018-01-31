@@ -339,18 +339,16 @@ def get_file_list(usage):
     else:
         raise RuntimeError("invalid usage")
 
-
-
 """
 """
 def save_obj(obj, root, number):
-    with open(os.path.join(root, "dataset", "test_patch_dataset" + str(number) + ".pkl"), 'wb') as f:
+    with open(os.path.join(root, "dataset", "test_patch_" + str(number) + ".pkl"), 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 """
 """
 def load_obj(root, number):
-    with open(os.path.join(root, "dataset", "test_patch_dataset" + str(number) + ".pkl"), 'rb') as f:
+    with open(os.path.join(root, "dataset", "test_patch_" + str(number) + ".pkl"), 'rb') as f:
         return pickle.load(f)
 
 
@@ -359,7 +357,7 @@ param : batch_size (int)
 
 return :
 """
-def get_data_set(batch_size, root, level, patch_size, number, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
+def create_dataset_to_bin(batch_size, root, level, patch_size, number, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
     dataset = {}
 
     set_of_patch = []
@@ -368,8 +366,9 @@ def get_data_set(batch_size, root, level, patch_size, number, tumor_ratio=0.2, d
     list_of_slide = get_file_list("slide")
     # list_of_annotation = get_file_list("annotation")
 
+    random.shuffle(list_of_slide)
+
     print(list_of_slide)
-    # print(list_of_annotation)
 
     length = len(list_of_slide)
 
@@ -379,7 +378,7 @@ def get_data_set(batch_size, root, level, patch_size, number, tumor_ratio=0.2, d
     mini_batch = int(batch_size / length)
 
     for slide in list_of_slide:
-        print(slide, "work...")
+        print(slide, "on working...")
         data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, mini_batch, patch_size, tumor_ratio, determine_percent, save_patch_image)
 
         set_of_patch += data.set_of_patch
@@ -400,7 +399,7 @@ def get_data_set(batch_size, root, level, patch_size, number, tumor_ratio=0.2, d
 
 
 if __name__ == "__main__":
-    get_data_set(100, "./Data", 4, (304, 304), 0)
+    create_dataset_to_bin(60000, "./Data", 4, (304, 304), 0)
 
     # 유지
     entry = load_obj("./Data", 0)
