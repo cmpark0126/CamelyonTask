@@ -23,6 +23,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
 
+from data_loader import get_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
@@ -58,9 +59,9 @@ transform_test = transforms.Compose([
 
 
 trainset, valset, testset = get_dataset(transform_train, transform_test)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=100, shuffle=True, num_workers=2)
-valloader = torch.utils.data.DataLoader(valset, batch_size=100, shuffle=False, num_workers=2)
-testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=10, shuffle=True, num_workers=2)
+valloader = torch.utils.data.DataLoader(valset, batch_size=10, shuffle=False, num_workers=2)
+# testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 
 
@@ -79,7 +80,7 @@ if args.resume:
 else:
     print('==> Building model..')
     # net = VGG('VGG19')
-    net = ResNet101()
+    net = resnet101()
     # net = PreActResNet18()
     # net = GoogLeNet()
    # net = DenseNet121()
@@ -99,7 +100,7 @@ criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = ReduceLOnPlateau(optimizer, 'min')
+#scheduler = ReduceLOnPlateau(optimizer, 'min')
 
 # Training
 def train(epoch):
@@ -112,25 +113,29 @@ def train(epoch):
     total = 0
     
     for batch_idx, (inputs, targets) in enumerate(trainloader):
+        target_backup = targets
         if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
+            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor) 
+            inputs, targets, target_backup = inputs.cuda(), targets.cuda(), target_backup.cuda()
         optimizer.zero_grad()
-        inputs, targets = Variable(inputs), Variable(targets)
+        inputs, targets, target_backup = Variable(inputs), Variable(targets), Variable(target_backup)
         outputs = net(inputs)
-        loss = criterion(outputs, targets)
+        print(outputs, " is outputs")
+        print(targets, " is targets")
+        outputarray = torch.squeeze(outputs)
+        loss = criterion(outputarray, targets)
         loss.backward()
         optimizer.step()
 
         train_loss += loss.data[0]
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+        correct += predicted.eq(target_backup.data).cpu().sum()
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 def val(epoch):
-    global chance
     global best_acc
     global accuracy_list
     global loss_list
@@ -143,16 +148,19 @@ def val(epoch):
     total = 0
     
     for batch_idx, (inputs, targets) in enumerate(valloader):
+        target_backup = targets       
         if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
+            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
+            inputs, targets, target_backup = inputs.cuda(), targets.cuda(), target_backup.cuda()
+        inputs, targets, target_backup = Variable(inputs, volatile=True), Variable(targets), Variable(target_backup)
         outputs = net(inputs)
-        loss = criterion(outputs, targets)
+        outputarray = torch.squeeze(outputs)
+        loss = criterion(outputarray, targets)
 
         val_loss += loss.data[0]
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+        correct += predicted.eq(target_backup.data).cpu().sum()
 
         progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
@@ -165,8 +173,6 @@ def val(epoch):
             'net' : net.module if use_cuda else net,
             'acc' : acc,
             'epoch' : epoch,
-            'stack' : stack,
-            'chance' : chance,
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
@@ -193,28 +199,30 @@ def test():
     net.eval()
 
     for batch_idx, (inputs, targets) in enumerate(testloader):
+        target_backup = targets       
         if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
+            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
+            inputs, targets, target_backup = inputs.cuda(), targets.cuda(), target_backup.cuda()
+        inputs, targets, target_backup = Variable(inputs, volatile=True), Variable(targets), Variable(target_backup) 
         outputs = net(inputs)
-        loss = criterion(outputs, targets)
-
+        outputarray = torch.squeeze(outputs)
+        loss = criterion(outputarray, targets)
         test_loss += loss.data[0]
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+        correct += predicted.eq(target_backup.data).cpu().sum()
 
         progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
 
-for epoch in range(start_epoch, start_epoch+150):
+for epoch in range(start_epoch, start_epoch+2):
     train(epoch)
     val(epoch)
-    scheduler.step(val_loss) 
+#    scheduler.step(val_loss) 
 
-
+"""
 
 plt.plot(epoch_list, loss_list)
 plt.ylabel('Loss')
@@ -234,6 +242,6 @@ plt.plot(epoch_list, learningrate_list)
 plt.ylabel('Learning rate')
 plt.xlabel('Epoch')
 plt.savefig('test_learingrate.png')
-test()
+# test()
 
-
+"""
