@@ -7,8 +7,14 @@ import cv2
 from xml.etree.ElementTree import parse
 from PIL import Image
 import pickle
+import time
+from multiprocessing import Pool, Queue, Process
+from itertools import repeat
 
 import torch.utils.data as data
+
+q1 = Queue()
+q2 = Queue()
 
 class CAMELYON(data.Dataset):
     """
@@ -26,11 +32,11 @@ class CAMELYON(data.Dataset):
     base_folder_for_etc = 'etc'
 
     def __init__(self, root, slide_fn, xml_fn, level, num_of_patch, patch_size, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
-
+        print("in class, "+slide_fn)
         self.root = os.path.expanduser(root)
         self.level = level
         self.slide_fn = slide_fn
-        self.xml_fn = xml_fn
+        self.xml_fn = xml_fn[:-4]+".xml"
 
         self.num_of_patch = num_of_patch
         self.patch_size = patch_size
@@ -57,7 +63,8 @@ class CAMELYON(data.Dataset):
         self.set_of_patch, self.set_of_pos = self.create_dataset(save_patch_image)
 
         self.thumbnail = self.create_thumbnail()
-
+        q1.put(self.set_of_patch)
+        q2.put(self.set_of_pos)
 
     # """
     # param :
@@ -366,7 +373,9 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
 
     set_of_patch = []
     set_of_pos = []
-
+    
+    procs = []
+    '''
     for slide in list_of_slide:
         print(slide, "on working...")
         data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, batch_per_slide, patch_size, tumor_ratio, determine_percent, save_patch_image)
@@ -374,6 +383,21 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
         # depend on type of set_of_path
         set_of_patch += data.set_of_patch
         set_of_pos += data.set_of_pos
+    '''
+
+    #with Pool(processes = 10) as pool:
+    pool = Pool(8)    
+    print("pre")
+    pool.starmap(CAMELYON, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
+     
+    #print(data.get())
+    #outputs += d.set_of_patch for d in data
+    #data.wait()
+    print("after")
+    print("dataset path : ", q1.get())
+    set_of_patch += q1.get()
+    set_of_pos += q2.get()
+    
 
     dataset["patch"] = np.array(set_of_patch)
     dataset["labels"] = np.array(set_of_pos)
@@ -427,4 +451,7 @@ def create_train_and_val_dataset(root, level, patch_size, num_of_slide_for_train
                             save_patch_image)
 
 if __name__ == "__main__":
+    start_time = time.time()
     create_train_and_val_dataset("./Data", 4, (304, 304), 3, 500, 0)
+    end_time = time.time()
+    print( "Run time is :  ", end_time - start_time)
