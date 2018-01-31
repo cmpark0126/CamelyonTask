@@ -42,12 +42,10 @@ class CAMELYON(data.Dataset):
         self.xml_path = os.path.join(self.root, self.base_folder_for_annotation)
 
         self.patch_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_patch)
-        self.check_path_existence(self.patch_path)
+        check_path_existence(self.patch_path)
 
         self.etc_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_etc)
-        self.check_path_existence(self.etc_path)
-
-
+        check_path_existence(self.etc_path)
 
         self.slide = openslide.OpenSlide(os.path.join(self.slide_path, self.slide_fn))
         self.downsamples = int(self.slide.level_downsamples[self.level])
@@ -61,29 +59,29 @@ class CAMELYON(data.Dataset):
         self.thumbnail = self.create_thumbnail()
 
 
-    """
-    param :
-
-    return : tissue_mask (numpy_array)
-    """
-    def check_path_existence(self, dir_name):
-        path = ""
-
-        while(True):
-            split = dir_name.split('/', 1)
-
-            path = path + split[0] + '/'
-
-            if not os.path.isdir(path):
-                os.mkdir(path, )
-                print(path, "is created!")
-
-            if len(split) == 1:
-                break
-
-            dir_name = split[1]
-
-        return True
+    # """
+    # param :
+    #
+    # return : tissue_mask (numpy_array)
+    # """
+    # def check_path_existence(self, dir_name):
+    #     path = ""
+    #
+    #     while(True):
+    #         split = dir_name.split('/', 1)
+    #
+    #         path = path + split[0] + '/'
+    #
+    #         if not os.path.isdir(path):
+    #             os.mkdir(path, )
+    #             print(path, "is created!")
+    #
+    #         if len(split) == 1:
+    #             break
+    #
+    #         dir_name = split[1]
+    #
+    #     return True
 
     """
     param :
@@ -324,6 +322,26 @@ class CAMELYON(data.Dataset):
         if reset_thumbnail:
             self.thumbnail = self.create_thumbnail()
 
+"""
+"""
+def check_path_existence(dir_name):
+    path = ""
+
+    while(True):
+        split = dir_name.split('/', 1)
+
+        path = path + split[0] + '/'
+
+        if not os.path.isdir(path):
+            os.mkdir(path, )
+            print(path, "is created!")
+
+        if len(split) == 1:
+            break
+
+        dir_name = split[1]
+
+    return True
 
 """
 param :
@@ -341,15 +359,31 @@ def get_file_list(usage):
 
 """
 """
-def save_obj(obj, root, number):
-    with open(os.path.join(root, "dataset", "test_patch_" + str(number) + ".pkl"), 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch_per_slide, number, tumor_ratio, determine_percent, save_patch_image):
+    base_folder = "dataset"
 
-"""
-"""
-def load_obj(root, number):
-    with open(os.path.join(root, "dataset", "test_patch_" + str(number) + ".pkl"), 'rb') as f:
-        return pickle.load(f)
+    dataset = {}
+
+    set_of_patch = []
+    set_of_pos = []
+
+    for slide in list_of_slide:
+        print(slide, "on working...")
+        data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, batch_per_slide, patch_size, tumor_ratio, determine_percent, save_patch_image)
+
+        # depend on type of set_of_path
+        set_of_patch += data.set_of_patch
+        set_of_pos += data.set_of_pos
+
+    dataset["patch"] = np.array(set_of_patch)
+    dataset["labels"] = np.array(set_of_pos)
+
+    fp = os.path.join(root, base_folder, usage)
+    check_path_existence(fp)
+    fn = os.path.join(fp, "batch_" + str(number) + ".pkl")
+    fo = open(fn, 'wb')
+    pickle.dump(dataset, fo, pickle.HIGHEST_PROTOCOL)
+    fo.close()
 
 
 """
@@ -357,52 +391,40 @@ param : batch_size (int)
 
 return :
 """
-def create_dataset_to_bin(batch_size, root, level, patch_size, number, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
-    dataset = {}
-
-    set_of_patch = []
-    set_of_pos = []
-
+def create_train_and_val_dataset(root, level, patch_size, num_of_slide_for_train, batch_per_slide, number, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
     list_of_slide = get_file_list("slide")
-    # list_of_annotation = get_file_list("annotation")
-
     random.shuffle(list_of_slide)
-
     print(list_of_slide)
 
-    length = len(list_of_slide)
+    if len(list_of_slide) < num_of_slide_for_train:
+        raise RuntimeError("invalid param : num_of_slide_for_train must be smaller than number of file")
 
-    if (batch_size % length) != 0:
-        RuntimeError("invalid param")
+    list_of_slide_for_train = list_of_slide[:num_of_slide_for_train]
+    list_of_slide_for_val = list_of_slide[num_of_slide_for_train:]
 
-    mini_batch = int(batch_size / length)
+    print("create train dataset")
+    read_slide_and_save_bin("train",
+                            list_of_slide_for_train,
+                            root,
+                            level,
+                            patch_size,
+                            batch_per_slide,
+                            number,
+                            tumor_ratio,
+                            determine_percent,
+                            save_patch_image)
 
-    for slide in list_of_slide:
-        print(slide, "on working...")
-        data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, mini_batch, patch_size, tumor_ratio, determine_percent, save_patch_image)
-
-        set_of_patch += data.set_of_patch
-        set_of_pos += data.set_of_pos
-
-    set_of_patch = np.asarray(set_of_patch)
-    set_of_pos = np.asarray(set_of_pos)
-
-    print("set_of_patch", set_of_patch.shape)
-    print("set_of_pos", set_of_pos.shape)
-
-    dataset["patch"] = set_of_patch
-    dataset["label"] = set_of_pos
-
-    save_obj(dataset, root, number)
-
-    return dataset
-
+    print("create val dataset")
+    read_slide_and_save_bin("val",
+                            list_of_slide_for_val,
+                            root,
+                            level,
+                            patch_size,
+                            batch_per_slide,
+                            number,
+                            tumor_ratio,
+                            determine_percent,
+                            save_patch_image)
 
 if __name__ == "__main__":
-    create_dataset_to_bin(60000, "./Data", 4, (304, 304), 0)
-
-    # 유지
-    entry = load_obj("./Data", 0)
-
-    print(entry['patch'].shape)
-    print(entry['label'].shape)
+    create_train_and_val_dataset("./Data", 4, (304, 304), 3, 500, 0)
