@@ -76,9 +76,6 @@ for batch_idx, (inputs, _ ) in enumerate(testloader):
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
     outputs_cpu = outputs.cpu()
-    for i in range(batch_size):
-        labeling.append(outputs_cpu[i])
-        if outputs_cpu[i] == 1:
-            index = batch_size * batch_idx + i
-            tumor_list.append(index)
+    makecsv(output)
+
 print("end")
