@@ -11,6 +11,7 @@ import time
 # for multiprocessing
 from multiprocessing import Pool, Queue, Process, Array
 from itertools import repeat
+from tqdm import tqdm
 
 # user define variable
 from user_define import Config as cf
@@ -35,51 +36,72 @@ class CAMELYON_PREPRO():
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
     def __init__(self, usage, slide_filename):
-        target_slide_path   = os.path.join(cf.path_of_slide,
-                                           slide_filename)
-        self.slide          = openslide.OpenSlide(target_slide_path)
-        self.downsamples    = int(self.slide.level_downsamples[self.level])
 
-        xml_filename        = slide_filename[:-4]+".xml"
-        target_xml_path     = os.path.join(cf.path_of_annotation,
-                                           xml_filename)
-        self.annotation     = self.get_annotation_from_xml(target_xml_path)
+        if usage == 'train' or usage == 'val':
+            target_slide_path   = os.path.join(cf.path_of_slide,
+                                               slide_filename)
+            self.slide          = openslide.OpenSlide(target_slide_path)
+            self.downsamples    = int(self.slide.level_downsamples[self.level])
 
-        # for save action
-        self.patch_path     = os.path.join(cf.path_for_generated_image,
-                                           slide_filename[:-4],
-                                           cf.base_folder_for_patch)
-        self.check_path(self.patch_path)
+            xml_filename        = slide_filename[:-4]+".xml"
+            target_xml_path     = os.path.join(cf.path_of_annotation,
+                                               xml_filename)
+            self.annotation     = self.get_annotation_from_xml(target_xml_path)
 
-        self.etc_path       = os.path.join(cf.path_for_generated_image,
-                                           slide_filename[:-4],
-                                           cf.base_folder_for_etc)
-        self.check_path(self.etc_path)
+            # for save action
+            self.patch_path     = os.path.join(cf.path_for_generated_image,
+                                               slide_filename[:-4],
+                                               cf.base_folder_for_patch)
+            self.check_path(self.patch_path)
 
-        # for create patch array
-        self.tissue_mask        = self.create_tissue_mask(cf.save_tissue_mask_image)
-        self.tumor_mask         = self.create_tumor_mask(cf.save_tumor_mask_image)
+            self.etc_path       = os.path.join(cf.path_for_generated_image,
+                                               slide_filename[:-4],
+                                               cf.base_folder_for_etc)
+            self.check_path(self.etc_path)
 
-        num_of_patch_in_tumor_mask  = int(self.num_of_patch * self.ratio_of_tumor_patch)
-        num_of_patch_in_tissue_mask = self.num_of_patch - num_of_patch_in_tumor_mask
+            # for create patch array
+            self.tissue_mask        = self.create_tissue_mask(cf.save_tissue_mask_image)
+            self.tumor_mask         = self.create_tumor_mask(cf.save_tumor_mask_image)
 
-        set_of_inform_in_tumor  = self.get_inform_of_random_samples(
-                                    self.tumor_mask,
-                                    num_of_patch_in_tumor_mask)
+            num_of_patch_in_tumor_mask  = int(self.num_of_patch * self.ratio_of_tumor_patch)
+            num_of_patch_in_tissue_mask = self.num_of_patch - num_of_patch_in_tumor_mask
 
-        set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                    self.tissue_mask - self.tumor_mask,
-                                    num_of_patch_in_tissue_mask)
+            set_of_inform_in_tumor  = self.get_inform_of_random_samples(
+                                        self.tumor_mask,
+                                        num_of_patch_in_tumor_mask)
 
-        self.set_of_inform  = np.array(set_of_inform_in_tumor + set_of_inform_in_tissue)
-        self.set_of_patch   = self.get_patch_data(cf.save_patch_images)
+            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                        self.tissue_mask - self.tumor_mask,
+                                        num_of_patch_in_tissue_mask)
+
+            self.set_of_inform  = np.array(set_of_inform_in_tumor + set_of_inform_in_tissue)
+            self.set_of_patch   = self.get_patch_data(cf.save_patch_images)
+
+            if cf.save_thumbnail_image:
+                self.thumbnail = self.create_thumbnail()
+                self.draw_tumor_pos_on_thumbnail()
+                self.draw_patch_pos_on_thumbnail()
+
+        elif usage == 'test':
+            file_list = os.listdir(cf.path_of_task_1)
+            file_list.sort()
+            set_of_patch = []
+
+            for fn in tqdm(file_list):
+                fp = os.path.join(cf.path_of_task_1, fn)
+                img = cv2.imread(fp, cv2.IMREAD_COLOR)
+                set_of_patch.append(img)
+
+            self.set_of_inform = np.array(file_list)
+            self.set_of_patch = np.array(set_of_patch)
+
+        else:
+            raise RuntimeError("usage is invalid value")
+
 
         self.create_dataset(usage, slide_filename)
 
-        if cf.save_thumbnail_image:
-            self.thumbnail = self.create_thumbnail()
-            self.draw_tumor_pos_on_thumbnail()
-            self.draw_patch_pos_on_thumbnail()
+
 
     """
     param :
@@ -313,6 +335,10 @@ class CAMELYON_PREPRO():
             fp = cf.path_of_train_dataset
         elif usage == 'val':
             fp = cf.path_of_val_dataset
+        elif usage == 'test':
+            fp = cf.path_of_test_dataset
+        else:
+            raise RuntimeError("usage is invalid value")
 
         self.check_path(fp)
 
@@ -384,14 +410,14 @@ def get_file_list(usage):
 
 """
 """
-def read_slide_and_save_bin(usage, list_of_slide, number):
+def read_slide_and_save_bin(usage, list_of_slide):
     for slide in list_of_slide:
         print(slide, "on working...")
-        data = CAMELYON_PREPRO(usage, slide)
+        CAMELYON_PREPRO(usage, slide)
 
 """
 """
-def read_slide_and_save_bin_multi(usage, list_of_slide, number):
+def read_slide_and_save_bin_multi(usage, list_of_slide):
 
     #with Pool(processes = 10) as pool:
     #q = Queue()
@@ -409,9 +435,8 @@ param : batch_size (int)
 
 return :
 """
-def create_train_and_val_dataset(number, num_of_slide_for_train):
+def create_train_and_val_dataset(num_of_slide_for_train):
     list_of_slide = get_file_list("slide")
-    random.shuffle(list_of_slide)
     print(list_of_slide)
 
     if len(list_of_slide) < num_of_slide_for_train:
@@ -422,16 +447,18 @@ def create_train_and_val_dataset(number, num_of_slide_for_train):
 
     print("create train dataset")
     read_slide_and_save_bin_multi("train",
-                            list_of_slide_for_train,
-                            number)
+                            list_of_slide_for_train)
 
     print("create val dataset")
     read_slide_and_save_bin_multi("val",
-                            list_of_slide_for_val,
-                            number)
+                            list_of_slide_for_val)
+
+    print("create val dataset")
+    CAMELYON_PREPRO("test")
+
 
 if __name__ == "__main__":
     start_time = time.time()
-    create_train_and_val_dataset(0, 3)
+    create_train_and_val_dataset(12)
     end_time = time.time()
     print( "Run time is :  ", end_time - start_time)

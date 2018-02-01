@@ -14,7 +14,6 @@ set_of_patch = []
 
 for fn in tqdm(file_list):
     img = cv2.imread(path + fn, cv2.IMREAD_COLOR)
-    #img = np.array(img)
     set_of_patch.append(img)
 
 set_of_patch = np.array(set_of_patch)
@@ -32,4 +31,3 @@ print(dataset.shape)
 
 
 print("program end")
-

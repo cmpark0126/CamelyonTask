@@ -4,6 +4,7 @@ class Config:
     '''config'''
     path_of_slide               = './Data/slide'
     path_of_annotation          = './Data/annotation'
+    path_of_task_1              = './Data/task/task_1'
 
     # result of data preprocessing
     # './Data/result/$SLIDE_NAME/patch(etc)'
