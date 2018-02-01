@@ -4,5 +4,6 @@ checkpoint/
 checkpoint\
 __pycache__/
 __pycache__\
-/*.tif
-/*.xml
+*.tif
+*.xml
+temp.py

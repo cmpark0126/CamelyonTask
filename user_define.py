@@ -1,25 +1,43 @@
-# config.py
+""" Created by DeepBio Camelyon toy problem team3
+"""
+class Config:
+    '''config'''
+    path_of_slide               = './Data/slide'
+    path_of_annotation          = './Data/annotation'
 
-# ROOT = './Data'
+    # result of data preprocessing
+    # './Data/result/$SLIDE_NAME/patch(etc)'
+    path_for_generated_image    = './Data/result'
+    base_folder_for_patch       = 'patch'
+    base_folder_for_etc         = 'etc'
 
-# dataset creator option
-PATH_OF_SLIDE = './Data/slide'
-PATH_OF_ANNOTATION = './Data/annotation'
+    path_of_train_dataset       = './Data/dataset/train'
+    path_of_val_dataset         = './Data/dataset/val'
+    path_of_test_dataset        = './Data/dataset/test'
 
-PATH_FOR_PATCH_IMAGE = './Data/result/patch'
-PATH_FOR_ETC = './Data/result'
+    '''select option'''
+    level_for_preprocessing     = 4
 
-LEVEL = 4
-PATCH_SIZE = (304, 304)
-NUMBER_OF_PATCH_PER_SLIDE = 500
-RATIO_FOR_TOTAL_TUMOR_PATCH = 0.5
-THRESHOLD_FOR_TUMOR_RATE = 0.3
+    save_tissue_mask_image      = True
+    save_tumor_mask_image       = True
+    save_patch_images           = False
+
+    save_thumbnail_image        = True
+
+    # for create dataset
+    key_of_data                 = 'data'
+    key_of_informs              = 'informations'
 
 
 
-# dataset loading
-PATH_OF_TRAIN_DATASET = './Data/dataset/train'
-PATH_OF_VAL_DATASET = './Data/dataset/val'
-PATH_OF_TEST_DATASET = './Data/dataset/test'
+class Hyperparams:
+    '''Hyper parameters'''
+    # for data preprocess
+    patch_size                  = (304, 304)
 
-# for heatmap to thumbnail
+    # for train dataset
+    number_of_patch_per_slide   = 500
+    ratio_of_tumor_patch        = 0.5
+    threshold_of_tumor_rate     = 0.3
+
+    # for test dataset
