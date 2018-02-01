@@ -8,13 +8,14 @@ from xml.etree.ElementTree import parse
 from PIL import Image
 import pickle
 import time
-from multiprocessing import Pool, Queue, Process
+from multiprocessing import Pool, Queue, Process, Array
 from itertools import repeat
 
 import torch.utils.data as data
 
-q1 = Queue()
-q2 = Queue()
+q = Queue()
+
+set_of_patch = []
 
 class CAMELYON(data.Dataset):
     """
@@ -63,9 +64,8 @@ class CAMELYON(data.Dataset):
         self.set_of_patch, self.set_of_pos = self.create_dataset(save_patch_image)
 
         self.thumbnail = self.create_thumbnail()
-        q1.put(self.set_of_patch)
-        q2.put(self.set_of_pos)
-
+        
+        
     # """
     # param :
     #
@@ -374,7 +374,6 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
     set_of_patch = []
     set_of_pos = []
     
-    procs = []
     '''
     for slide in list_of_slide:
         print(slide, "on working...")
@@ -384,20 +383,18 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
         set_of_patch += data.set_of_patch
         set_of_pos += data.set_of_pos
     '''
-
     #with Pool(processes = 10) as pool:
+    #q = Queue()
     pool = Pool(8)    
     print("pre")
-    pool.starmap(CAMELYON, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
+    result = pool.starmap_async(CAMELYON, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
      
-    #print(data.get())
-    #outputs += d.set_of_patch for d in data
-    #data.wait()
     print("after")
-    print("dataset path : ", q1.get())
-    set_of_patch += q1.get()
-    set_of_pos += q2.get()
+   
+    result.wait()
     
+    #print(set_of_patch)
+    #print(result.get())
 
     dataset["patch"] = np.array(set_of_patch)
     dataset["labels"] = np.array(set_of_pos)
