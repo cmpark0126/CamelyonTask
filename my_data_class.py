@@ -7,10 +7,17 @@ import cv2
 from xml.etree.ElementTree import parse
 from PIL import Image
 import pickle
+import time
+from multiprocessing import Pool, Queue, Process, Array
+from itertools import repeat
 
 import torch.utils.data as data
 
 import config
+
+q = Queue()
+
+set_of_patch = []
 
 class CAMELYON(data.Dataset):
     """
@@ -36,7 +43,7 @@ class CAMELYON(data.Dataset):
         check_path_existence(config.PATH_FOR_ETC)
 
         self.slide_fn = slide_fn
-        self.xml_fn = xml_fn
+        self.xml_fn = xml_fn[:-4]+".xml"
 
         self.slide = openslide.OpenSlide(os.path.join(self.slide_path, self.slide_fn))
         self.downsamples = int(self.slide.level_downsamples[self.level])
@@ -48,6 +55,31 @@ class CAMELYON(data.Dataset):
         self.set_of_patch, self.set_of_pos = self.create_dataset(save_patch_image)
 
         self.thumbnail = self.create_thumbnail()
+
+
+    # """
+    # param :
+    #
+    # return : tissue_mask (numpy_array)
+    # """
+    # def check_path_existence(self, dir_name):
+    #     path = ""
+    #
+    #     while(True):
+    #         split = dir_name.split('/', 1)
+    #
+    #         path = path + split[0] + '/'
+    #
+    #         if not os.path.isdir(path):
+    #             os.mkdir(path, )
+    #             print(path, "is created!")
+    #
+    #         if len(split) == 1:
+    #             break
+    #
+    #         dir_name = split[1]
+    #
+    #     return True
 
     """
     param :
@@ -315,6 +347,7 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
     set_of_patch = []
     set_of_pos = []
 
+    '''
     for slide in list_of_slide:
         print(slide, "on working...")
         data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, batch_per_slide, patch_size, tumor_ratio, determine_percent, save_patch_image)
@@ -322,6 +355,19 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
         # depend on type of set_of_path
         set_of_patch += data.set_of_patch
         set_of_pos += data.set_of_pos
+    '''
+    #with Pool(processes = 10) as pool:
+    #q = Queue()
+    pool = Pool(8)
+    print("pre")
+    result = pool.starmap_async(CAMELYON, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
+
+    print("after")
+
+    result.wait()
+
+    #print(set_of_patch)
+    #print(result.get())
 
     dataset["patch"] = np.array(set_of_patch)
     dataset["labels"] = np.array(set_of_pos)
@@ -375,4 +421,7 @@ def create_train_and_val_dataset(root, level, patch_size, num_of_slide_for_train
                             save_patch_image)
 
 if __name__ == "__main__":
+    start_time = time.time()
     create_train_and_val_dataset("./Data", 4, (304, 304), 3, 500, 0)
+    end_time = time.time()
+    print( "Run time is :  ", end_time - start_time)
