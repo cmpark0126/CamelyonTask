@@ -388,38 +388,20 @@ def read_slide_and_save_bin(usage, list_of_slide, number):
     for slide in list_of_slide:
         print(slide, "on working...")
         data = CAMELYON_PREPRO(usage, slide)
+
 """
 """
 def read_slide_and_save_bin_multi(usage, list_of_slide, number):
-    base_folder = "dataset"
-
-    dataset = {}
-
-    set_of_patch = []
-    set_of_inform = []
 
     #with Pool(processes = 10) as pool:
     #q = Queue()
     pool = Pool(8)
     print("pre")
-    result = pool.starmap_async(CAMELYON_PREPRO, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
+    result = pool.starmap_async(CAMELYON_PREPRO, zip(repeat(usage), list_of_slide))
 
     print("after")
 
     result.wait()
-
-    print(set_of_patch)
-    print(result.get())
-
-    dataset["patch"] = np.array(set_of_patch)
-    dataset["labels"] = np.array(set_of_inform)
-
-    fp = os.path.join(root, base_folder, usage)
-    check_path_existence(fp)
-    fn = os.path.join(fp, "batch_" + str(number) + ".pkl")
-    fo = open(fn, 'wb')
-    pickle.dump(dataset, fo, pickle.HIGHEST_PROTOCOL)
-    fo.close()
 
 
 """
@@ -439,12 +421,12 @@ def create_train_and_val_dataset(number, num_of_slide_for_train):
     list_of_slide_for_val = list_of_slide[num_of_slide_for_train:]
 
     print("create train dataset")
-    read_slide_and_save_bin("train",
+    read_slide_and_save_bin_multi("train",
                             list_of_slide_for_train,
                             number)
 
     print("create val dataset")
-    read_slide_and_save_bin("val",
+    read_slide_and_save_bin_multi("val",
                             list_of_slide_for_val,
                             number)
 
