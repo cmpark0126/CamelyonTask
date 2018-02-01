@@ -1,4 +1,8 @@
 Data/
 Data\
+checkpoint/
+checkpoint\
+__pycache__/
+__pycache__\
 /*.tif
 /*.xml

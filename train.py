@@ -12,7 +12,7 @@ import torchvision.datasets as datasets
 import os
 import argparse
 
-from resnet import *
+from models import *
 from utils import progress_bar
 from torch.autograd import Variable
 
@@ -24,7 +24,7 @@ import pylab
 
 import pdb
 
-from data_loader import get_dataset
+from load_dataset import get_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
@@ -71,7 +71,7 @@ if args.resume:
     net = checkpoint['net']
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
-    
+
 else:
     print('==> Building model..')
     net = resnet101()
@@ -96,12 +96,12 @@ def train(epoch):
     train_loss = 0
     correct = 0
     total = 0
-    
+
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
-            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor) 
+            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
             inputs, targets = inputs.cuda(), targets.cuda()
-       
+
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
         outputs = net(inputs)
@@ -124,14 +124,14 @@ def train(epoch):
 def val(epoch):
     global best_acc
     global loss_list
-    
+
 
     net.eval()
 
     val_loss = 0
     correct = 0
     total = 0
-    
+
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
@@ -143,7 +143,7 @@ def val(epoch):
         thresholding = torch.ones(batch_size) * (1 - threshold)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
-        
+
         val_loss += loss.data[0]
         total += targets.size(0)
         correct += predicted.data.eq(targets.data).cpu().sum()
@@ -164,7 +164,7 @@ def val(epoch):
             os.mkdir('checkpoint')
         torch.save(state, './checkpoint/ckpt.t7')
         best_acc = acc
-       
+
 
 
 
@@ -185,18 +185,18 @@ def test():
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
             inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets) 
+        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
         outputs = net(inputs)
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
         thresholding = torch.ones(batch_size) * (1 - threshold)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
-        
+
         test_loss += loss.data[0]
         total += targets.size(0)
         correct += outputs.data.eq(targets.data).cpu().sum()
-       
+
         progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 

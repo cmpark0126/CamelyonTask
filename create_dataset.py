@@ -13,11 +13,7 @@ from itertools import repeat
 
 import torch.utils.data as data
 
-import config
-
-q = Queue()
-
-set_of_patch = []
+import user_define as config
 
 class CAMELYON(data.Dataset):
     """
@@ -31,6 +27,7 @@ class CAMELYON(data.Dataset):
 
     slide_path = config.PATH_OF_SLIDE
     xml_path = config.PATH_OF_ANNOTATION
+    etc_path = config.PATH_FOR_ETC
     level = config.LEVEL
     patch_size = config.PATCH_SIZE
     num_of_patch = config.NUMBER_OF_PATCH_PER_SLIDE
@@ -347,7 +344,7 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
     set_of_patch = []
     set_of_pos = []
 
-    '''
+
     for slide in list_of_slide:
         print(slide, "on working...")
         data = CAMELYON(root, slide, slide[:-4] + ".xml", 4, batch_per_slide, patch_size, tumor_ratio, determine_percent, save_patch_image)
@@ -355,16 +352,16 @@ def read_slide_and_save_bin(usage, list_of_slide, root, level, patch_size, batch
         # depend on type of set_of_path
         set_of_patch += data.set_of_patch
         set_of_pos += data.set_of_pos
-    '''
-    #with Pool(processes = 10) as pool:
-    #q = Queue()
-    pool = Pool(8)
-    print("pre")
-    result = pool.starmap_async(CAMELYON, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
 
-    print("after")
-
-    result.wait()
+    # #with Pool(processes = 10) as pool:
+    # #q = Queue()
+    # pool = Pool(8)
+    # print("pre")
+    # result = pool.starmap_async(CAMELYON, zip(repeat(root), list_of_slide, list_of_slide, repeat(4), repeat(batch_per_slide), repeat(patch_size), repeat(tumor_ratio), repeat(determine_percent), repeat(save_patch_image)))
+    #
+    # print("after")
+    #
+    # result.wait()
 
     #print(set_of_patch)
     #print(result.get())

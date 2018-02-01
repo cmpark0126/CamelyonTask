@@ -12,7 +12,7 @@ import torchvision.datasets as datasets
 import os
 import argparse
 
-from resnet import *
+from models import *
 from utils import progress_bar
 from torch.autograd import Variable
 
@@ -22,7 +22,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
 
-from data_loader import get_dataset
+from load_dataset import get_dataset
 
 
 use_cuda = torch.cuda.is_available()
@@ -73,18 +73,3 @@ for batch_idx, (inputs, _ ) in enumerate(testloader):
             index = batch_size * batch_idx + i
             tumor_list.append(index)
 print("end")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
