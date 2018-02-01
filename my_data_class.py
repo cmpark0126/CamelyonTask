@@ -10,6 +10,8 @@ import pickle
 
 import torch.utils.data as data
 
+import config
+
 class CAMELYON(data.Dataset):
     """
     CAMELYON Dataset preprocessed by DEEPBIO
@@ -19,33 +21,22 @@ class CAMELYON(data.Dataset):
         level (int)
         patch_size (int, int)
     """
-    base_folder_for_annotation = 'annotation'
-    base_folder_for_slide = 'slide'
-    base_folder_for_result = 'result'
-    base_folder_for_patch = 'patch'
-    base_folder_for_etc = 'etc'
+
+    slide_path = config.PATH_OF_SLIDE
+    xml_path = config.PATH_OF_ANNOTATION
+    level = config.LEVEL
+    patch_size = config.PATCH_SIZE
+    num_of_patch = config.NUMBER_OF_PATCH_PER_SLIDE
+    ratio = config.RATIO_FOR_TOTAL_TUMOR_PATCH
+    percent = config.THRESHOLD_FOR_TUMOR_RATE
 
     def __init__(self, root, slide_fn, xml_fn, level, num_of_patch, patch_size, tumor_ratio=0.2, determine_percent=0.3, save_patch_image=False):
 
-        self.root = os.path.expanduser(root)
-        self.level = level
+        check_path_existence(config.PATH_FOR_PATCH_IMAGE)
+        check_path_existence(config.PATH_FOR_ETC)
+
         self.slide_fn = slide_fn
         self.xml_fn = xml_fn
-
-        self.num_of_patch = num_of_patch
-        self.patch_size = patch_size
-
-        self.ratio = tumor_ratio
-        self.percent = determine_percent
-
-        self.slide_path = os.path.join(self.root, self.base_folder_for_slide)
-        self.xml_path = os.path.join(self.root, self.base_folder_for_annotation)
-
-        self.patch_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_patch)
-        check_path_existence(self.patch_path)
-
-        self.etc_path = os.path.join(self.root, self.base_folder_for_result, self.slide_fn[:-4], self.base_folder_for_etc)
-        check_path_existence(self.etc_path)
 
         self.slide = openslide.OpenSlide(os.path.join(self.slide_path, self.slide_fn))
         self.downsamples = int(self.slide.level_downsamples[self.level])
