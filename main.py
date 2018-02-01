@@ -1,4 +1,3 @@
-'''Train CIFAR10 with PyTorch.'''
 from __future__ import print_function
 
 import torch
@@ -23,6 +22,8 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
 
+import pdb
+
 from data_loader import get_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
@@ -35,7 +36,7 @@ best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 threshold = 0.7
-batch_size = 100
+batch_size = 10
 
 
 
@@ -85,7 +86,7 @@ criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
 # Training
 def train(epoch):
@@ -104,17 +105,18 @@ def train(epoch):
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
         outputs = net(inputs)
+#        pdb.set_trace()
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
         thresholding = torch.ones(batch_size) * (1 - threshold)
-        outputs = outputs + Variable(thresholding.cuda())
-        outputs = torch.floor(outputs)
+        predicted = outputs + Variable(thresholding.cuda())
+        predicted = torch.floor(predicted)
 
         train_loss += loss.data[0]
         total += targets.size(0)
-        correct += outputs.data.eq(targets.data).cpu().sum()
+        correct += predicted.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
@@ -139,12 +141,12 @@ def val(epoch):
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
         thresholding = torch.ones(batch_size) * (1 - threshold)
-        outputs = outputs + Variable(thresholding.cuda())
-        outputs = torch.floor(outputs)
+        predicted = outputs + Variable(thresholding.cuda())
+        predicted = torch.floor(predicted)
         
         val_loss += loss.data[0]
         total += targets.size(0)
-        correct += outputs.data.eq(targets.data).cpu().sum()
+        correct += predicted.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
@@ -188,8 +190,8 @@ def test():
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
         thresholding = torch.ones(batch_size) * (1 - threshold)
-        outputs = outputs + Variable(thresholding.cuda())
-        outputs = torch.floor(outputs)
+        predicted = outputs + Variable(thresholding.cuda())
+        predicted = torch.floor(predicted)
         
         test_loss += loss.data[0]
         total += targets.size(0)
@@ -200,7 +202,7 @@ def test():
 
 
 
-for epoch in range(start_epoch, start_epoch+20):
+for epoch in range(start_epoch, start_epoch+1):
     scheduler.step()
     train(epoch)
     val(epoch)
