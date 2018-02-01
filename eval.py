@@ -24,14 +24,23 @@ import pylab
 
 from load_dataset import get_dataset
 
+import csv
+from user_define import Config as cp
 
-use_cuda = torch.cuda.is_available()
+vuse_cuda = torch.cuda.is_available()
 
 threshold = 0.7
 batch_size = 100
 tumor_list = []
 labeling = []
 
+def makecsv(output):
+    f = open(cp.path_for_generated_image + "result.csv", 'w', encoding = 'utf-8', newline='')
+    wr = csv.writer(f)
+    for i in range(batch_size):
+       wr.writerow([ i, output[i]])
+    f.close()
+    
 print('==> Preparing data..')
 
 transform_test =transforms.Compose([
