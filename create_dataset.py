@@ -11,7 +11,7 @@ import time
 # for multiprocessing
 from multiprocessing import Pool, Queue, Process, Array
 from itertools import repeat
-from tqdm import tqdm
+# from tqdm import tqdm
 
 # user define variable
 from user_define import Config as cf
@@ -86,11 +86,15 @@ class CAMELYON_PREPRO():
             file_list = os.listdir(cf.path_of_task_1)
             file_list.sort()
             set_of_patch = []
-
-            for fn in tqdm(file_list):
+            i = 0
+            # for fn in tqdm(file_list):
+            for fn in file_list:
                 fp = os.path.join(cf.path_of_task_1, fn)
                 img = cv2.imread(fp, cv2.IMREAD_COLOR)
                 set_of_patch.append(img)
+                i = i + 1
+                print("\r%d" %(i), end="")
+            print("\n")
 
             self.set_of_inform = np.array(file_list)
             self.set_of_patch = np.array(set_of_patch)
@@ -454,7 +458,7 @@ def create_train_and_val_dataset(num_of_slide_for_train):
                             list_of_slide_for_val)
 
     print("create val dataset")
-    CAMELYON_PREPRO("test")
+    CAMELYON_PREPRO("test", "test")
 
 
 if __name__ == "__main__":
