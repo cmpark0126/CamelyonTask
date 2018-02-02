@@ -37,8 +37,8 @@ use_cuda = torch.cuda.is_available()
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-threshold = 0.5
-batch_size = 100
+threshold = 0.2
+batch_size = 200
 
 def to_np(x):
     return x.data.cpu().numpy()
@@ -76,8 +76,8 @@ if args.resume:
 
 else:
     print('==> Building model..')
-    net = resnet101()
-    #net = DenseNet121()
+#    net = resnet101()
+    net = densenet121()
 
 if use_cuda:
     net.cuda()
@@ -90,7 +90,7 @@ criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
 # Training
 def train(epoch):
@@ -113,7 +113,7 @@ def train(epoch):
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
-        thresholding = torch.ones(batch_size) * (1 - threshold)
+        thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
 
@@ -141,6 +141,8 @@ def val(epoch):
     false_negative = [0] * (hubo_num + 1)
     sensitivity = []
     specificity = []
+    best_correction = 0
+    best_threshold = 0.2
 
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
@@ -153,11 +155,11 @@ def val(epoch):
         val_loss += loss.data[0]
         total += targets.size(0)
         for i in range(hubo_num+1):
-            thresholding = torch.ones(batch_size) * (1 - i/hubo_num)
+            thresholding = torch.ones(inputs.size(0)) * (1 - i/hubo_num)
             predicted = outputs + Variable(thresholding.cuda())
             predicted = torch.floor(predicted)
             finderror = (targets - predicted) * 0.5
-            biased = torch.ones(batch_size) * 0.5
+            biased = torch.ones(inputs.size(0)) * 0.5
             fposi = finderror + Variable(biased.cuda())
             fnega = -finderror + Variable(biased.cuda())
             fposi = torch.floor(fposi)
@@ -169,31 +171,26 @@ def val(epoch):
         negative += (batch_size - targets.data.cpu().sum())
 
     for i in range(hubo_num+1):
+        error = false_negative[i] + false_positive[i]
+        if total - error < best_correction:
+            best_correction = total - error
+            best_threshold = i / hubo_num
         sensitivity.append(1 - false_negative[i] / positive)
         specificity.append(1 - false_positive[i] / negative)
-        plt.plot(specificity, sensitivity)
-
+    
+    plt.plot(specificity, sensitivity)
     plt.xlabel('Specificity')
     plt.ylabel('Sensitivity')
     fig = plt.gcf()
     fig.savefig('ROC curve.png')
     print(sensitivity, ", sensitivity, ", specificity, ", specificity")
+    fig = plt.gcf().clear()
 
-
-
-
-#        correct += predicted.data.eq(targets.data).cpu().sum()
-
-#        progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-#            % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
-
-
-    print(false_positive, ", false_positive, ", false_negative, ", false_negative")
-    print(positive, ", positive, ", negative, ", negative")
 
 # Save checkpoint.
 
-    acc = 100.*correct/total
+    acc = 100.*best_correction/total
+    print('Best accuracy: ', acc, 'at threshold: ', best_threshold )
     info = {
             'loss': loss.data[0],
             'accuracy': 100.*correct/total
@@ -234,9 +231,8 @@ def val(epoch):
 
 
 
-for epoch in range(start_epoch, start_epoch+1):
-#    scheduler.step()
+for epoch in range(start_epoch, start_epoch+50):
+    scheduler.step()
     train(epoch)
     val(epoch)
 
-# test()

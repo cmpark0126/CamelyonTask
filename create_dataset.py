@@ -70,8 +70,14 @@ class CAMELYON_PREPRO():
             set_of_inform_in_tumor  = self.get_inform_of_random_samples(
                                         self.tumor_mask,
                                         num_of_patch_in_tumor_mask)
-
-            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+            
+            tumor_mask_dilation = get_dilation(self.tumor_mask)
+            if usage == 'train':
+                sef_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                        self.tissue_mask - tumor_mask_dilation, 
+                                        num_of_patch_in_tissue_mask)
+            else:
+                set_of_inform_in_tissue = self.get_inform_of_random_samples(
                                         self.tissue_mask - self.tumor_mask,
                                         num_of_patch_in_tissue_mask)
 
@@ -105,6 +111,14 @@ class CAMELYON_PREPRO():
 
 
         self.create_dataset(usage, slide_filename)
+        
+
+    def get_dilation(mask):
+        kernel_dilation = np.ones((6, 6), np.uint8)
+        dilation = cv2.dilate(mask, kernel, iterations = 1)
+        return dilation
+
+
 
 
     """
