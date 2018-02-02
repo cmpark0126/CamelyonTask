@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import pylab
 import tqdm
 
-from load_dataset import get_dataset
+from load_dataset import get_test_dataset
 
 import csv
 from user_define import Config as cp
@@ -35,9 +35,9 @@ batch_size = 100
 tumor_list = []
 labeling = []
 
+
 f = open(cp.path_for_generated_image + "/result.csv", 'w', encoding = 'utf-8', newline='')
 wr = csv.writer(f)
-
 
 def makecsv(output, label, size):
     for i in range(size):
@@ -48,7 +48,7 @@ transform_test =transforms.Compose([
     transforms.ToTensor(),
 ])
 
-trainset, valset, testset = get_dataset(transform_test, transform_test)
+testset = get_test_dataset(transform_test, transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=16)
 
 print('==>Resuming from checkpoint..')

@@ -24,8 +24,10 @@ import pylab
 
 import pdb
 
-from load_dataset import get_dataset
 from logger import Logger
+
+from load_dataset import get_train_dataset, get_val_dataset
+
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
@@ -54,9 +56,8 @@ transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-
-
-trainset, valset, testset = get_dataset(transform_train, transform_test)
+trainset = get_train_dataset(transform_train, transform_test)
+valset = get_val_dataset(transform_train, transform_test)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=16)
 valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=True, num_workers=16)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
@@ -129,7 +130,7 @@ def val(epoch):
 
 
     net.eval()
-    
+
     hubo_num = 20
     val_loss = 0
     correct = 0
@@ -140,7 +141,7 @@ def val(epoch):
     false_negative = [0] * (hubo_num + 1)
     sensitivity = []
     specificity = []
-    
+
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
@@ -151,7 +152,7 @@ def val(epoch):
         loss = criterion(outputs, targets)
         val_loss += loss.data[0]
         total += targets.size(0)
-        for i in range(hubo_num+1):    
+        for i in range(hubo_num+1):
             thresholding = torch.ones(batch_size) * (1 - i/hubo_num)
             predicted = outputs + Variable(thresholding.cuda())
             predicted = torch.floor(predicted)
@@ -161,12 +162,12 @@ def val(epoch):
             fnega = -finderror + Variable(biased.cuda())
             fposi = torch.floor(fposi)
             fnega = torch.floor(fnega)
-        
+
             false_positive[i] += fposi.data.cpu().sum()
             false_negative[i] += fnega.data.cpu().sum()
-        positive += targets.data.cpu().sum() 
+        positive += targets.data.cpu().sum()
         negative += (batch_size - targets.data.cpu().sum())
-        
+
     for i in range(hubo_num+1):
         sensitivity.append(1 - false_negative[i] / positive)
         specificity.append(1 - false_positive[i] / negative)
@@ -182,10 +183,10 @@ def val(epoch):
 
 
 #        correct += predicted.data.eq(targets.data).cpu().sum()
-        
+
 #        progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
 #            % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
- 
+
 
     print(false_positive, ", false_positive, ", false_negative, ", false_negative")
     print(positive, ", positive, ", negative, ", negative")
@@ -217,7 +218,7 @@ def val(epoch):
 
 #       for tag, images in info.items():
 #           logger.image_summary(tag, images, step+1)
-    
+
 
     if acc > best_acc:
         print('Saving..')
