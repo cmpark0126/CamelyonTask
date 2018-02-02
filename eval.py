@@ -34,15 +34,15 @@ batch_size = 100
 tumor_list = []
 labeling = []
 
-def makecsv(output):
+def makecsv(output, label):
     f = open(cp.path_for_generated_image + "result.csv", 'w', encoding = 'utf-8', newline='')
     wr = csv.writer(f)
     for i in range(batch_size):
-       wr.writerow([ i, output[i]])
+        if output[i] == 1:
+            wr.writerow([ label[i], output[i]])
     f.close()
-    
-print('==> Preparing data..')
 
+print('==> Preparing data..')
 transform_test =transforms.Compose([
     transforms.ToTensor(),
 ])
@@ -64,7 +64,7 @@ if use_cuda:
 
 net.eval()
 
-for batch_idx, (inputs, _ ) in enumerate(testloader):
+for batch_idx, (inputs, label ) in enumerate(testloader):
     if use_cuda:
         inputs = inputs.type(torch.cuda.FloatTensor)
         inputs = inputs.cuda()
@@ -76,6 +76,6 @@ for batch_idx, (inputs, _ ) in enumerate(testloader):
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
     outputs_cpu = outputs.cpu()
-    makecsv(output)
+    makecsv(output, label)
 
 print("end")
