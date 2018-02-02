@@ -35,11 +35,11 @@ tumor_list = []
 labeling = []
 
 def makecsv(output, label):
-    f = open(cp.path_for_generated_image + "result.csv", 'w', encoding = 'utf-8', newline='')
+    f = open(cp.path_for_generated_image + "/result.csv", 'w', encoding = 'utf-8', newline='')
     wr = csv.writer(f)
     for i in range(batch_size):
-        if output[i] == 1:
-            wr.writerow([ label[i], output[i]])
+        print(label[i])
+        wr.writerow([label[i], output[i]])
     f.close()
 
 print('==> Preparing data..')
