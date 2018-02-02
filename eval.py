@@ -21,28 +21,29 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
+import tqdm
 
 from load_dataset import get_test_dataset
 
 import csv
 from user_define import Config as cp
 
-vuse_cuda = torch.cuda.is_available()
+use_cuda = torch.cuda.is_available()
 
 threshold = 0.7
 batch_size = 100
 tumor_list = []
 labeling = []
 
-def makecsv(output):
-    f = open(cp.path_for_generated_image + "result.csv", 'w', encoding = 'utf-8', newline='')
-    wr = csv.writer(f)
-    for i in range(batch_size):
-       wr.writerow([ i, output[i]])
-    f.close()
+
+f = open(cp.path_for_generated_image + "/result.csv", 'w', encoding = 'utf-8', newline='')
+wr = csv.writer(f)
+
+def makecsv(output, label, size):
+    for i in range(size):
+        wr.writerow([label[i], output[i]])
 
 print('==> Preparing data..')
-
 transform_test =transforms.Compose([
     transforms.ToTensor(),
 ])
@@ -64,7 +65,7 @@ if use_cuda:
 
 net.eval()
 
-for batch_idx, (inputs, _ ) in enumerate(testloader):
+for batch_idx, (inputs, label ) in enumerate(testloader):
     if use_cuda:
         inputs = inputs.type(torch.cuda.FloatTensor)
         inputs = inputs.cuda()
@@ -72,10 +73,11 @@ for batch_idx, (inputs, _ ) in enumerate(testloader):
     inputs = Variable(inputs, volatile=True)
     outputs = net(inputs)
     outputs = torch.squeeze(outputs)
-    thresholding = torch.ones(batch_size) * (1 - threshold)
+    thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
-    outputs_cpu = outputs.cpu()
-    makecsv(output)
+    outputs_cpu = outputs.data.cpu()
+    makecsv(outputs_cpu, label, inputs.size(0))
 
+f.close()
 print("end")

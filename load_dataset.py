@@ -30,6 +30,7 @@ class CAMELYON_DATALOADER(data.Dataset):
                  transform=None, target_transform=None):
         self.transform = transform
         self.target_transform = target_transform
+        self.usage = usage
 
         if usage == 'train':
             self.path_of_dataset = cf.path_of_train_dataset
@@ -70,7 +71,11 @@ class CAMELYON_DATALOADER(data.Dataset):
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
-        img, target = self.data[index], self.labels[index][0]
+        if self.usage == 'test':
+            img, target = self.data[index], self.labels[index]
+        else:
+            img, target = self.data[index], self.labels[index][0]
+
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
         img = Image.fromarray(img)
