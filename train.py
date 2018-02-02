@@ -25,7 +25,7 @@ import pylab
 import pdb
 
 from load_dataset import get_dataset
-
+from logger import Logger
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
@@ -35,10 +35,11 @@ use_cuda = torch.cuda.is_available()
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-threshold = 0.7
-batch_size = 10
+threshold = 0.5
+batch_size = 100
 
-
+def to_np(x):
+    return x.data.cpu().numpy()
 
 
 # Data
@@ -57,7 +58,7 @@ transform_test = transforms.Compose([
 
 trainset, valset, testset = get_dataset(transform_train, transform_test)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=16)
-valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=False, num_workers=16)
+valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=True, num_workers=16)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
 
 
@@ -82,6 +83,8 @@ if use_cuda:
     net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
 
+
+logger = Logger('./logs')
 criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
@@ -105,7 +108,6 @@ def train(epoch):
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
         outputs = net(inputs)
-#        pdb.set_trace()
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
         loss.backward()
@@ -127,11 +129,18 @@ def val(epoch):
 
 
     net.eval()
-
+    
+    hubo_num = 20
     val_loss = 0
     correct = 0
     total = 0
-
+    positive = 0
+    negative = 0
+    false_positive = [0] * (hubo_num + 1)
+    false_negative = [0] * (hubo_num + 1)
+    sensitivity = []
+    specificity = []
+    
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
             inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
@@ -140,19 +149,76 @@ def val(epoch):
         outputs = net(inputs)
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
-        thresholding = torch.ones(batch_size) * (1 - threshold)
-        predicted = outputs + Variable(thresholding.cuda())
-        predicted = torch.floor(predicted)
-
         val_loss += loss.data[0]
         total += targets.size(0)
-        correct += predicted.data.eq(targets.data).cpu().sum()
+        for i in range(hubo_num+1):    
+            thresholding = torch.ones(batch_size) * (1 - i/hubo_num)
+            predicted = outputs + Variable(thresholding.cuda())
+            predicted = torch.floor(predicted)
+            finderror = (targets - predicted) * 0.5
+            biased = torch.ones(batch_size) * 0.5
+            fposi = finderror + Variable(biased.cuda())
+            fnega = -finderror + Variable(biased.cuda())
+            fposi = torch.floor(fposi)
+            fnega = torch.floor(fnega)
+        
+            false_positive[i] += fposi.data.cpu().sum()
+            false_negative[i] += fnega.data.cpu().sum()
+        positive += targets.data.cpu().sum() 
+        negative += (batch_size - targets.data.cpu().sum())
+        
+    for i in range(hubo_num+1):
+        sensitivity.append(1 - false_negative[i] / positive)
+        specificity.append(1 - false_positive[i] / negative)
+        plt.plot(specificity, sensitivity)
 
-        progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
+    plt.xlabel('Specificity')
+    plt.ylabel('Sensitivity')
+    fig = plt.gcf()
+    fig.savefig('ROC curve.png')
+    print(sensitivity, ", sensitivity, ", specificity, ", specificity")
 
-    # Save checkpoint.
+
+
+
+#        correct += predicted.data.eq(targets.data).cpu().sum()
+        
+#        progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+#            % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
+ 
+
+    print(false_positive, ", false_positive, ", false_negative, ", false_negative")
+    print(positive, ", positive, ", negative, ", negative")
+
+# Save checkpoint.
+
     acc = 100.*correct/total
+    info = {
+            'loss': loss.data[0],
+            'accuracy': 100.*correct/total
+             }
+
+    #============ TensorBoard logging ============#
+    # (1) Log the scalar values
+
+    for tag, value in info.items():
+        logger.scalar_summary(tag, value, epoch+1)
+
+    # (2) Log values and gradients of the parameters (histogram)
+    for tag, value in net.named_parameters():
+        tag = tag.replace('.', '/')
+        logger.histo_summary(tag, to_np(value), epoch+1)
+        logger.histo_summary(tag+'/grad', to_np(value.grad), epoch+1)
+
+    # (3) Log the images
+#       info = {
+#           'images': to_np(images.view(-1, 28, 28)[:10])
+#       }
+
+#       for tag, images in info.items():
+#           logger.image_summary(tag, images, step+1)
+    
+
     if acc > best_acc:
         print('Saving..')
         state = {
@@ -167,43 +233,8 @@ def val(epoch):
 
 
 
-
-
-def test():
-    global best_acc
-    test_loss = 0
-    correct = 0
-    total = 0
-    checkpoint = torch.load('./checkpoint/ckpt.t7')
-    net = checkpoint['net']
-    epoch = checkpoint['epoch']
-    adjust_learning_rate(optimizer, epoch)
-
-    net.eval()
-
-    for batch_idx, (inputs, targets) in enumerate(testloader):
-        if use_cuda:
-            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
-        outputs = net(inputs)
-        outputs = torch.squeeze(outputs)
-        loss = criterion(outputs, targets)
-        thresholding = torch.ones(batch_size) * (1 - threshold)
-        predicted = outputs + Variable(thresholding.cuda())
-        predicted = torch.floor(predicted)
-
-        test_loss += loss.data[0]
-        total += targets.size(0)
-        correct += outputs.data.eq(targets.data).cpu().sum()
-
-        progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
-
-
-
 for epoch in range(start_epoch, start_epoch+1):
-    scheduler.step()
+#    scheduler.step()
     train(epoch)
     val(epoch)
 
