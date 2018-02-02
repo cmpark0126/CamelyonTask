@@ -21,6 +21,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
+import tqdm
 
 from load_dataset import get_dataset
 
@@ -34,11 +35,12 @@ batch_size = 100
 tumor_list = []
 labeling = []
 
-def makecsv(output, label):
-    f = open(cp.path_for_generated_image + "/result.csv", 'w', encoding = 'utf-8', newline='')
-    wr = csv.writer(f)
-    for i in range(batch_size):
-        print(label[i])
+f = open(cp.path_for_generated_image + "/result.csv", 'w', encoding = 'utf-8', newline='')
+wr = csv.writer(f)
+
+
+def makecsv(output, label, size):
+    for i in range(size):
         wr.writerow([label[i], output[i]])
 
 print('==> Preparing data..')
@@ -77,4 +79,5 @@ for batch_idx, (inputs, label ) in enumerate(testloader):
     outputs_cpu = outputs.data.cpu()
     makecsv(outputs_cpu, label, inputs.size(0))
 
+f.close()
 print("end")
