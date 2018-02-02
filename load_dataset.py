@@ -8,7 +8,10 @@ import sys
 import pickle
 
 import torch.utils.data as data
-#from .utils import download_url, check_integrity
+
+# user define variable
+from user_define import Config as cf
+from user_define import Hyperparams as hp
 
 class CAMELYON_DATALOADER(data.Dataset):
     """
@@ -23,39 +26,42 @@ class CAMELYON_DATALOADER(data.Dataset):
     """
     base_folder = 'dataset'
 
-    def __init__(self, root, epoch, usage='train',
+    def __init__(self, usage='train',
                  transform=None, target_transform=None,
                  download=False):
-        self.root = os.path.expanduser(root)
         self.transform = transform
         self.target_transform = target_transform
-        self.usage = usage # training set or val set or test set
 
-        self.dataset_list = self._get_dataset_list()
-
-        # now load the picked numpy arrays
-        if self.usage == 'train':
-            filename = self.dataset_list[epoch % 2]
-            fliepath = os.path.join(self.root, self.base_folder, self.usage, filename)
-            fo = open(fliepath, 'rb')
-            dataset = pickle.load(fo)
-            fo.close()
-
-            self.train_data = dataset['patch']
-            self.train_labels = dataset['labels']
-
-        elif self.usage == 'val':
-            filename = self.dataset_list[epoch % 2]
-            fliepath = os.path.join(self.root, self.base_folder, self.usage, filename)
-            fo = open(fliepath, 'rb')
-            dataset = pickle.load(fo)
-            fo.close()
-
-            self.val_data = dataset['patch']
-            self.val_labels = dataset['labels']
+        if usage == 'train':
+            self.path_of_dataset = cf.path_of_train_dataset
+        elif usage == 'val':
+            self.path_of_dataset = cf.path_of_val_dataset
+        elif usage == 'test':
+            self.path_of_dataset = cf.path_of_test_dataset
         else:
-            self.test_data = 0
-            self.test_labels = 0
+            raise RuntimeError("invalid usage")
+
+        self.dataset_list = self._get_dataset_list(self.path_of_dataset)
+
+        print(self.dataset_list)
+        # now load the picked numpy arrays
+        self.data = []
+        self.labels = []
+        for filename in self.dataset_list:
+            fliepath = os.path.join(self.path_of_dataset, filename)
+            fo = open(fliepath, 'rb')
+            dataset = pickle.load(fo)
+
+            self.data.append(dataset[cf.key_of_data])
+            self.labels.append(dataset[cf.key_of_informs])
+
+            fo.close()
+
+        self.data = np.concatenate(self.data)
+        print(self.data.shape)
+        self.labels = np.concatenate(self.labels)
+        print(self.labels.shape)
+
 
     def __getitem__(self, index):
         """
@@ -65,13 +71,7 @@ class CAMELYON_DATALOADER(data.Dataset):
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
-        if self.usage == 'train':
-            img, target = self.train_data[index], self.train_labels[index][0]
-        elif self.usage == 'val':
-            img, target = self.val_data[index], self.val_labels[index][0]
-        else:
-            img, target = self.test_data[index], self.test_labels[index][0]
-
+        img, target = self.data[index], self.labels[index][0]
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
         img = Image.fromarray(img)
@@ -85,45 +85,26 @@ class CAMELYON_DATALOADER(data.Dataset):
         return img, target
 
     def __len__(self):
-        if self.usage == 'train':
-            return len(self.train_data)
-        elif self.usage == 'val':
-            return len(self.val_data)
-        else:
-            return len(self.test_data)
+        return len(self.data)
 
-    def _get_dataset_list(self):
-        root = self.root
-        usage = self.usage
-        if usage == "train" or usage == "test" or usage == "val":
-            dir_path = os.path.join("./Data", self.base_folder, usage)
-            # print("get list of dataset binary file")
-            file_list = os.listdir(dir_path)
-            file_list.sort()
-            return file_list
-        else:
-            raise RuntimeError("invalid usage")
+    def _get_dataset_list(self, dir_path):
+        file_list = os.listdir(dir_path)
+        file_list.sort()
+        return file_list
 
 
-def get_dataset(train_transform, test_transform, epoch=0):
-    train_dataset = CAMELYON_DATALOADER('./Data',
-                                        epoch,
-                                        usage='train',
+def get_dataset(train_transform, test_transform):
+    train_dataset = CAMELYON_DATALOADER(usage='train',
                                         download=False,
                                         transform=train_transform)
-    val_dataset = CAMELYON_DATALOADER('./Data',
-                                        epoch,
-                                        usage='val',
-                                        download=False,
-                                        transform=test_transform)
-    # test_dataset = CAMELYON_DATALOADER('./data',
-    #                                     epoch,
-    #                                     usage='test',
-    #                                     download=False,
-    #                                     transform=test_transform)
-    test_dataset = 0
+    val_dataset = CAMELYON_DATALOADER(usage='val',
+                                      download=False,
+                                      transform=test_transform)
+    test_dataset = CAMELYON_DATALOADER(usage='test',
+                                       download=False,
+                                       transform=test_transform)
 
     return train_dataset, val_dataset, test_dataset
 
 if __name__ == "__main__":
-    get_dataset(None, None, 0)
+    get_dataset(None, None)

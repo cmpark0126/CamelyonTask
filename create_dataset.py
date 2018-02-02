@@ -346,7 +346,7 @@ class CAMELYON_PREPRO():
 
         self.check_path(fp)
 
-        fn = os.path.join(fp, slide_filename + ".pkl")
+        fn = os.path.join(fp, slide_filename[:-4] + ".pkl")
         fo = open(fn, 'wb')
         pickle.dump(dataset, fo, pickle.HIGHEST_PROTOCOL)
         fo.close()
@@ -457,12 +457,12 @@ def create_train_and_val_dataset(num_of_slide_for_train):
     read_slide_and_save_bin_multi("val",
                             list_of_slide_for_val)
 
-    print("create val dataset")
-    CAMELYON_PREPRO("test", "test")
+    # print("create val dataset")
+    # CAMELYON_PREPRO("test", "test")
 
 
 if __name__ == "__main__":
     start_time = time.time()
-    create_train_and_val_dataset(12)
+    create_train_and_val_dataset(2)
     end_time = time.time()
     print( "Run time is :  ", end_time - start_time)
