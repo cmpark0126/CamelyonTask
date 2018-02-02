@@ -27,7 +27,7 @@ from load_dataset import get_dataset
 import csv
 from user_define import Config as cp
 
-vuse_cuda = torch.cuda.is_available()
+use_cuda = torch.cuda.is_available()
 
 threshold = 0.7
 batch_size = 100
@@ -40,7 +40,6 @@ def makecsv(output, label):
     for i in range(batch_size):
         print(label[i])
         wr.writerow([label[i], output[i]])
-    f.close()
 
 print('==> Preparing data..')
 transform_test =transforms.Compose([
@@ -72,10 +71,10 @@ for batch_idx, (inputs, label ) in enumerate(testloader):
     inputs = Variable(inputs, volatile=True)
     outputs = net(inputs)
     outputs = torch.squeeze(outputs)
-    thresholding = torch.ones(batch_size) * (1 - threshold)
+    thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
-    outputs_cpu = outputs.cpu()
-    makecsv(output, label)
+    outputs_cpu = outputs.data.cpu()
+    makecsv(outputs_cpu, label, inputs.size(0))
 
 print("end")
