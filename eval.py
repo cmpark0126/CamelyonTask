@@ -34,10 +34,10 @@ batch_size = 100
 tumor_list = []
 labeling = []
 
-def makecsv(output, label):
+def makecsv(output, label, size):
     f = open(cp.path_for_generated_image + "result.csv", 'w', encoding = 'utf-8', newline='')
     wr = csv.writer(f)
-    for i in range(batch_size):
+    for i in range(size):
         if output[i] == 1:
             wr.writerow([ label[i], output[i]])
     f.close()
@@ -72,11 +72,10 @@ for batch_idx, (inputs, label ) in enumerate(testloader):
     inputs = Variable(inputs, volatile=True)
     outputs = net(inputs)
     outputs = torch.squeeze(outputs)
-    thresholding = torch.ones(batch_size) * (1 - threshold)
+    thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
     outputs_cpu = outputs.data.cpu()
-    print(outputs_cpu[2])
-    makecsv(outputs_cpu, label)
+    makecsv(outputs_cpu, label, inputs.size(0))
 
 print("end")
