@@ -36,8 +36,7 @@ class CAMELYON_PREPRO():
     ratio_of_tumor_patch    = hp.ratio_of_tumor_patch
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
-    def __init__(self, usage, slide_filename):
-
+    def __init__(self, usage, slide_filename):   
         if usage == 'train' or usage == 'val':
             target_slide_path   = os.path.join(cf.path_of_slide,
                                                slide_filename + '.tif')
@@ -70,16 +69,16 @@ class CAMELYON_PREPRO():
             set_of_inform_in_tumor  = self.get_inform_of_random_samples(
                                         self.tumor_mask,
                                         num_of_patch_in_tumor_mask)
-            
-            tumor_mask_dilation = get_dilation(self.tumor_mask)
-            if usage == 'train':
-                sef_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                        self.tissue_mask - tumor_mask_dilation, 
-                                        num_of_patch_in_tissue_mask)
-            else:
-                set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                        self.tissue_mask - self.tumor_mask,
-                                        num_of_patch_in_tissue_mask)
+
+#            tumor_mask_dilation = self.get_dilation(self.tumor_mask)
+#            if usage == 'train':
+#                sef_of_inform_in_tissue = self.get_inform_of_random_samples(
+#                                        self.tissue_mask - tumor_mask_dilation, 
+#                                        num_of_patch_in_tissue_mask)
+#            else:
+            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                       self.tissue_mask - self.tumor_mask,
+                                       num_of_patch_in_tissue_mask)
 
             self.set_of_inform  = np.array(set_of_inform_in_tumor + set_of_inform_in_tissue)
             self.set_of_patch   = self.get_patch_data(cf.save_patch_images)
@@ -113,13 +112,10 @@ class CAMELYON_PREPRO():
         self.create_dataset(usage, slide_filename)
         
 
-    def get_dilation(mask):
-        kernel_dilation = np.ones((6, 6), np.uint8)
-        dilation = cv2.dilate(mask, kernel, iterations = 1)
-        return dilation
-
-
-
+#    def get_dilation(self, mask):
+#        kernel_dilation = np.ones((6, 6), np.uint8)
+#        dilation = cv2.dilate(mask, kernel_dilation, iterations = 1)
+#        return dilation
 
     """
     param :
@@ -436,7 +432,7 @@ def read_slide_and_save_bin(usage, list_of_slide):
 """
 def read_slide_and_save_bin_multi(usage, list_of_slide):
     print(list_of_slide)
-
+    print(usage)
     pool = Pool(multiprocessing.cpu_count() - 1)
     print("pre")
     result = pool.starmap_async(CAMELYON_PREPRO, zip(repeat(usage), list_of_slide))

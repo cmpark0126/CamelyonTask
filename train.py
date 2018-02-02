@@ -38,7 +38,7 @@ best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 threshold = 0.2
-batch_size = 200
+batch_size = 250
 
 def to_np(x):
     return x.data.cpu().numpy()
