@@ -27,7 +27,7 @@ from load_dataset import get_dataset
 import csv
 from user_define import Config as cp
 
-vuse_cuda = torch.cuda.is_available()
+use_cuda = torch.cuda.is_available()
 
 threshold = 0.7
 batch_size = 100
@@ -75,7 +75,8 @@ for batch_idx, (inputs, label ) in enumerate(testloader):
     thresholding = torch.ones(batch_size) * (1 - threshold)
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
-    outputs_cpu = outputs.cpu()
-    makecsv(output, label)
+    outputs_cpu = outputs.data.cpu()
+    print(outputs_cpu[2])
+    makecsv(outputs_cpu, label)
 
 print("end")
