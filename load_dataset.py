@@ -27,8 +27,7 @@ class CAMELYON_DATALOADER(data.Dataset):
     base_folder = 'dataset'
 
     def __init__(self, usage='train',
-                 transform=None, target_transform=None,
-                 download=False):
+                 transform=None, target_transform=None):
         self.transform = transform
         self.target_transform = target_transform
 
@@ -93,18 +92,30 @@ class CAMELYON_DATALOADER(data.Dataset):
         return file_list
 
 
-def get_dataset(train_transform, test_transform):
+def get_train_dataset(train_transform, test_transform,
+                      train_target_transform=None, test_target_transform=None):
     train_dataset = CAMELYON_DATALOADER(usage='train',
-                                        download=False,
-                                        transform=train_transform)
-    val_dataset = CAMELYON_DATALOADER(usage='val',
-                                      download=False,
-                                      transform=test_transform)
-    test_dataset = CAMELYON_DATALOADER(usage='test',
-                                       download=False,
-                                       transform=test_transform)
+                                        transform=train_transform,
+                                        target_transform=train_target_transform)
+    return train_dataset
 
-    return train_dataset, val_dataset, test_dataset
+def get_val_dataset(train_transform, test_transform,
+                      train_target_transform=None, test_target_transform=None):
+
+    val_dataset = CAMELYON_DATALOADER(usage='val',
+                                      transform=test_transform,
+                                      target_transform=test_target_transform)
+    return val_dataset
+
+def get_test_dataset(train_transform, test_transform,
+                      train_target_transform=None, test_target_transform=None):
+    test_dataset = CAMELYON_DATALOADER(usage='test',
+                                       transform=test_transform,
+                                       target_transform=test_target_transform)
+    return test_dataset
 
 if __name__ == "__main__":
-    get_dataset(None, None)
+    get_train_dataset(None, None)
+    get_val_dataset(None, None)
+    get_test_dataset(None, None)
+    print("Dane")

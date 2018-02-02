@@ -22,7 +22,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
 
-from load_dataset import get_dataset
+from load_dataset import get_test_dataset
 
 import csv
 from user_define import Config as cp
@@ -40,14 +40,14 @@ def makecsv(output):
     for i in range(batch_size):
        wr.writerow([ i, output[i]])
     f.close()
-    
+
 print('==> Preparing data..')
 
 transform_test =transforms.Compose([
     transforms.ToTensor(),
 ])
 
-trainset, valset, testset = get_dataset(transform_test, transform_test)
+testset = get_test_dataset(transform_test, transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=16)
 
 print('==>Resuming from checkpoint..')

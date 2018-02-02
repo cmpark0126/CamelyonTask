@@ -9,6 +9,7 @@ import pickle
 import time
 
 # for multiprocessing
+import multiprocessing
 from multiprocessing import Pool, Queue, Process, Array
 from itertools import repeat
 # from tqdm import tqdm
@@ -39,23 +40,23 @@ class CAMELYON_PREPRO():
 
         if usage == 'train' or usage == 'val':
             target_slide_path   = os.path.join(cf.path_of_slide,
-                                               slide_filename)
+                                               slide_filename + '.tif')
             self.slide          = openslide.OpenSlide(target_slide_path)
             self.downsamples    = int(self.slide.level_downsamples[self.level])
 
-            xml_filename        = slide_filename[:-4]+".xml"
+            xml_filename        = slide_filename+".xml"
             target_xml_path     = os.path.join(cf.path_of_annotation,
                                                xml_filename)
             self.annotation     = self.get_annotation_from_xml(target_xml_path)
 
             # for save action
             self.patch_path     = os.path.join(cf.path_for_generated_image,
-                                               slide_filename[:-4],
+                                               slide_filename,
                                                cf.base_folder_for_patch)
             self.check_path(self.patch_path)
 
             self.etc_path       = os.path.join(cf.path_for_generated_image,
-                                               slide_filename[:-4],
+                                               slide_filename,
                                                cf.base_folder_for_etc)
             self.check_path(self.etc_path)
 
@@ -104,7 +105,6 @@ class CAMELYON_PREPRO():
 
 
         self.create_dataset(usage, slide_filename)
-
 
 
     """
@@ -346,12 +346,11 @@ class CAMELYON_PREPRO():
 
         self.check_path(fp)
 
-        fn = os.path.join(fp, slide_filename[:-4] + ".pkl")
+        fn = os.path.join(fp, slide_filename + ".pkl")
         fo = open(fn, 'wb')
         pickle.dump(dataset, fo, pickle.HIGHEST_PROTOCOL)
         fo.close()
 
-        print("Done")
 
     """
     param : slide file (openslide)
@@ -422,10 +421,9 @@ def read_slide_and_save_bin(usage, list_of_slide):
 """
 """
 def read_slide_and_save_bin_multi(usage, list_of_slide):
+    print(list_of_slide)
 
-    #with Pool(processes = 10) as pool:
-    #q = Queue()
-    pool = Pool(8)
+    pool = Pool(multiprocessing.cpu_count() - 1)
     print("pre")
     result = pool.starmap_async(CAMELYON_PREPRO, zip(repeat(usage), list_of_slide))
 
@@ -435,34 +433,32 @@ def read_slide_and_save_bin_multi(usage, list_of_slide):
 
 
 """
-param : batch_size (int)
-
-return :
 """
-def create_train_and_val_dataset(num_of_slide_for_train):
-    list_of_slide = get_file_list("slide")
-    print(list_of_slide)
-
-    if len(list_of_slide) < num_of_slide_for_train:
-        raise RuntimeError("invalid param : num_of_slide_for_train must be smaller than number of file")
-
-    list_of_slide_for_train = list_of_slide[:num_of_slide_for_train]
-    list_of_slide_for_val = list_of_slide[num_of_slide_for_train:]
-
+def create_train_dataset(list_of_slide_for_train):
     print("create train dataset")
     read_slide_and_save_bin_multi("train",
                             list_of_slide_for_train)
 
+"""
+"""
+def create_val_dataset(list_of_slide_for_val):
     print("create val dataset")
     read_slide_and_save_bin_multi("val",
                             list_of_slide_for_val)
 
-    # print("create val dataset")
-    # CAMELYON_PREPRO("test", "test")
-
+"""
+"""
+def create_test_dataset():
+    print("create test dataset")
+    CAMELYON_PREPRO("test", "test")
 
 if __name__ == "__main__":
     start_time = time.time()
-    create_train_and_val_dataset(2)
+
+    create_train_dataset(cf.list_of_slide_for_train)
+    create_val_dataset(cf.list_of_slide_for_val)
+    create_test_dataset()
+
     end_time = time.time()
     print( "Run time is :  ", end_time - start_time)
+    print("Done")

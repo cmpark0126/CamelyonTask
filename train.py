@@ -24,8 +24,12 @@ import pylab
 
 import pdb
 
+
 from load_dataset import get_dataset
 from logger import Logger
+
+from load_dataset import get_train_dataset, get_val_dataset
+
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
@@ -54,9 +58,8 @@ transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-
-
-trainset, valset, testset = get_dataset(transform_train, transform_test)
+trainset = get_train_dataset(transform_train, transform_test)
+valset = get_val_dataset(transform_train, transform_test)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=16)
 valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=True, num_workers=16)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)

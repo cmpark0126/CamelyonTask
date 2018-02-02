@@ -29,8 +29,26 @@ class Config:
     key_of_data                 = 'data'
     key_of_informs              = 'informations'
 
+    list_of_slide_for_train     = ['b_1',
+                                   'b_2',
+                                   'b_3',
+                                   'b_4',
+                                   'b_5',
+                                   'b_6',
+                                   'b_7',
+                                   'b_8',
+                                   'b_9',
+                                   'b_10',
+                                   'b_11',
+                                   'b_12',]
+    list_of_slide_for_val       = ['b_13',
+                                   'b_14',
+                                   'b_15',]
 
-
+    # list_of_slide_for_train     = ['b_0',
+    #                                'b_2',]
+    # list_of_slide_for_val       = ['b_4',
+    #                                'b_9',]
 class Hyperparams:
     '''Hyper parameters'''
     # for data preprocess
