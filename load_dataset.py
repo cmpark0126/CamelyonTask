@@ -58,9 +58,9 @@ class CAMELYON_DATALOADER(data.Dataset):
             fo.close()
 
         self.data = np.concatenate(self.data)
-        print(self.data.shape)
+        print("data shape is ", self.data.shape)
         self.labels = np.concatenate(self.labels)
-        print(self.labels.shape)
+        print("label shape is ", self.labels.shape)
 
 
     def __getitem__(self, index):

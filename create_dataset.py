@@ -4,6 +4,7 @@ import numpy as np
 import openslide
 from xml.etree.ElementTree import parse
 import cv2
+from PIL import Image
 
 import pickle
 import time
@@ -36,7 +37,8 @@ class CAMELYON_PREPRO():
     ratio_of_tumor_patch    = hp.ratio_of_tumor_patch
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
-    def __init__(self, usage, slide_filename):   
+    def __init__(self, usage, slide_filename):
+        
         if usage == 'train' or usage == 'val':
             target_slide_path   = os.path.join(cf.path_of_slide,
                                                slide_filename + '.tif')
@@ -69,16 +71,16 @@ class CAMELYON_PREPRO():
             set_of_inform_in_tumor  = self.get_inform_of_random_samples(
                                         self.tumor_mask,
                                         num_of_patch_in_tumor_mask)
-
-#            tumor_mask_dilation = self.get_dilation(self.tumor_mask)
+            
+            #tumor_mask_dilation = get_dilation(self.tumor_mask)
 #            if usage == 'train':
 #                sef_of_inform_in_tissue = self.get_inform_of_random_samples(
 #                                        self.tissue_mask - tumor_mask_dilation, 
 #                                        num_of_patch_in_tissue_mask)
 #            else:
             set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                       self.tissue_mask - self.tumor_mask,
-                                       num_of_patch_in_tissue_mask)
+                                    self.tissue_mask - self.tumor_mask,
+                                    num_of_patch_in_tissue_mask)
 
             self.set_of_inform  = np.array(set_of_inform_in_tumor + set_of_inform_in_tissue)
             self.set_of_patch   = self.get_patch_data(cf.save_patch_images)
@@ -97,6 +99,7 @@ class CAMELYON_PREPRO():
             for fn in file_list:
                 fp = os.path.join(cf.path_of_task_1, fn)
                 img = cv2.imread(fp, cv2.IMREAD_COLOR)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 set_of_patch.append(img)
                 i = i + 1
                 print("\r%d" %(i), end="")
@@ -112,10 +115,13 @@ class CAMELYON_PREPRO():
         self.create_dataset(usage, slide_filename)
         
 
-#    def get_dilation(self, mask):
-#        kernel_dilation = np.ones((6, 6), np.uint8)
-#        dilation = cv2.dilate(mask, kernel_dilation, iterations = 1)
-#        return dilation
+    #def get_dilation(mask):
+    #    kernel_dilation = np.ones((6, 6), np.uint8)
+    #    dilation = cv2.dilate(mask, kernel, iterations = 1)
+    #    return dilation
+
+
+
 
     """
     param :
@@ -302,8 +308,8 @@ class CAMELYON_PREPRO():
             print("Save patch image")
             for pos in set_of_inform:
                 is_tumor, x, y, w, h = pos
-                patch = slide.read_region((x, y), 0, (w, h))
-                set_of_patch.append(np.array(patch)[:, :, :3])
+                patch = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+                set_of_patch.append(np.array(patch))
 
                 # for image save
                 patch_fn = str(x)+"_"+str(y)+"_"+str(is_tumor)+".png"
@@ -319,9 +325,10 @@ class CAMELYON_PREPRO():
             print("Do not save patch image")
             for pos in set_of_inform:
                 is_tumor, x, y, w, h = pos
-                patch = slide.read_region((x, y), 0, (w, h))
-                set_of_patch.append(np.array(patch)[:, :, :3])
-
+                patch = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+                #rgb = cv2.cvtColor(patch, CV_COLOR_RGBA2RGB)
+                set_of_patch.append(np.array(patch))
+                #set_of_patch.append(np.array(patch))
                 print("\rPercentage : %d / %d" %(i, num_of_patch), end="")
                 i = i + 1
 
@@ -467,7 +474,7 @@ if __name__ == "__main__":
 
     create_train_dataset(cf.list_of_slide_for_train)
     create_val_dataset(cf.list_of_slide_for_val)
-    create_test_dataset()
+#    create_test_dataset()
 
     end_time = time.time()
     print( "Run time is :  ", end_time - start_time)

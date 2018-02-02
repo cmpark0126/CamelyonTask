@@ -90,7 +90,7 @@ criterion = nn.BCELoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
 
 # Training
 def train(epoch):
@@ -172,7 +172,7 @@ def val(epoch):
 
     for i in range(hubo_num+1):
         error = false_negative[i] + false_positive[i]
-        if total - error < best_correction:
+        if total - error > best_correction:
             best_correction = total - error
             best_threshold = i / hubo_num
         sensitivity.append(1 - false_negative[i] / positive)
@@ -193,7 +193,7 @@ def val(epoch):
     print('Best accuracy: ', acc, 'at threshold: ', best_threshold )
     info = {
             'loss': loss.data[0],
-            'accuracy': 100.*correct/total
+            'accuracy': 100.*best_correction/total
              }
 
     #============ TensorBoard logging ============#
@@ -231,7 +231,7 @@ def val(epoch):
 
 
 
-for epoch in range(start_epoch, start_epoch+50):
+for epoch in range(start_epoch, start_epoch+30):
     scheduler.step()
     train(epoch)
     val(epoch)

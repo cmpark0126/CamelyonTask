@@ -21,17 +21,17 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pylab
-import tqdm
 
 from load_dataset import get_test_dataset
+from load_dataset import get_val_dataset
 
 import csv
 from user_define import Config as cp
 
 use_cuda = torch.cuda.is_available()
 
-threshold = 0.7
-batch_size = 100
+threshold = 0.2
+batch_size = 250
 tumor_list = []
 labeling = []
 
@@ -41,6 +41,8 @@ wr = csv.writer(f)
 
 def makecsv(output, label, size):
     for i in range(size):
+        #if output[i] == 1 :
+        #    print(label[i])
         wr.writerow([label[i], output[i]])
 
 print('==> Preparing data..')
@@ -53,6 +55,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num
 
 print('==>Resuming from checkpoint..')
 checkpoint = torch.load('./checkpoint/ckpt.t7')
+#print(checkpoint)
 net = checkpoint['net']
 
 
@@ -66,17 +69,21 @@ if use_cuda:
 net.eval()
 
 for batch_idx, (inputs, label ) in enumerate(testloader):
+    #print(label)
+    #print(label.shape)
+    
     if use_cuda:
         inputs = inputs.type(torch.cuda.FloatTensor)
         inputs = inputs.cuda()
-
     inputs = Variable(inputs, volatile=True)
     outputs = net(inputs)
     outputs = torch.squeeze(outputs)
     thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
+    #print(outputs)
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
     outputs_cpu = outputs.data.cpu()
+    
     makecsv(outputs_cpu, label, inputs.size(0))
 
 f.close()
