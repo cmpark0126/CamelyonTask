@@ -30,7 +30,8 @@ from load_dataset import get_train_dataset, get_val_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
+parser.add_argument('--resume', '-r', action='store_true',
+                    help='resume from checkpoint')
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
@@ -39,6 +40,7 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 threshold = 0.2
 batch_size = 250
+
 
 def to_np(x):
     return x.data.cpu().numpy()
@@ -58,10 +60,11 @@ transform_test = transforms.Compose([
 
 trainset = get_train_dataset(transform_train, transform_test)
 valset = get_val_dataset(transform_train, transform_test)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=16)
-valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=True, num_workers=16)
+trainloader = torch.utils.data.DataLoader(
+    trainset, batch_size, shuffle=True, num_workers=16)
+valloader = torch.utils.data.DataLoader(
+    valset, batch_size, shuffle=True, num_workers=16)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
-
 
 
 # Model
@@ -81,18 +84,22 @@ else:
 
 if use_cuda:
     net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    net = torch.nn.DataParallel(
+        net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
 
 
 logger = Logger('./logs')
 criterion = nn.BCELoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
+optimizer = optim.SGD(net.parameters(), lr=args.lr,
+                      momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
 # Training
+
+
 def train(epoch):
     print('\nEpoch: %d' % epoch)
 
@@ -103,7 +110,8 @@ def train(epoch):
 
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
-            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
+            inputs, targets = inputs.type(
+                torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
             inputs, targets = inputs.cuda(), targets.cuda()
 
         optimizer.zero_grad()
@@ -122,12 +130,12 @@ def train(epoch):
         correct += predicted.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+                     % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+
 
 def val(epoch):
     global best_acc
     global loss_list
-
 
     net.eval()
 
@@ -146,7 +154,8 @@ def val(epoch):
 
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
-            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
+            inputs, targets = inputs.type(
+                torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
         outputs = net(inputs)
@@ -154,8 +163,8 @@ def val(epoch):
         loss = criterion(outputs, targets)
         val_loss += loss.data[0]
         total += targets.size(0)
-        for i in range(hubo_num+1):
-            thresholding = torch.ones(inputs.size(0)) * (1 - i/hubo_num)
+        for i in range(hubo_num + 1):
+            thresholding = torch.ones(inputs.size(0)) * (1 - i / hubo_num)
             predicted = outputs + Variable(thresholding.cuda())
             predicted = torch.floor(predicted)
             finderror = (targets - predicted) * 0.5
@@ -170,15 +179,16 @@ def val(epoch):
         positive += targets.data.cpu().sum()
         negative += (batch_size - targets.data.cpu().sum())
 
-    for i in range(hubo_num+1):
+    for i in range(hubo_num + 1):
         error = false_negative[i] + false_positive[i]
         if total - error > best_correction:
             best_correction = total - error
             best_threshold = i / hubo_num
         sensitivity.append(1 - false_negative[i] / positive)
         specificity.append(1 - false_positive[i] / negative)
-        print("Threshold: ", i / hubo_num, ", Accuracy: ", (total - error) / total)
-    
+        print("Threshold: ", i / hubo_num,
+              ", Accuracy: ", (total - error) / total)
+
     plt.plot(specificity, sensitivity)
     plt.xlabel('Specificity')
     plt.ylabel('Sensitivity')
@@ -189,24 +199,24 @@ def val(epoch):
 
 # Save checkpoint.
 
-    acc = 100.*best_correction/total
-    print('Best accuracy: ', acc, 'at threshold: ', best_threshold )
+    acc = 100. * best_correction / total
+    print('Best accuracy: ', acc, 'at threshold: ', best_threshold)
     info = {
-            'loss': loss.data[0],
-            'accuracy': 100.*best_correction/total
-             }
+        'loss': loss.data[0],
+        'accuracy': 100. * best_correction / total
+    }
 
     #============ TensorBoard logging ============#
     # (1) Log the scalar values
 
     for tag, value in info.items():
-        logger.scalar_summary(tag, value, epoch+1)
+        logger.scalar_summary(tag, value, epoch + 1)
 
     # (2) Log values and gradients of the parameters (histogram)
     for tag, value in net.named_parameters():
         tag = tag.replace('.', '/')
-        logger.histo_summary(tag, to_np(value), epoch+1)
-        logger.histo_summary(tag+'/grad', to_np(value.grad), epoch+1)
+        logger.histo_summary(tag, to_np(value), epoch + 1)
+        logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
 
     # (3) Log the images
 #       info = {
@@ -216,13 +226,12 @@ def val(epoch):
 #       for tag, images in info.items():
 #           logger.image_summary(tag, images, step+1)
 
-
     if val_loss < best_loss:
         print('Saving..')
         state = {
-            'net' : net.module if use_cuda else net,
-            'loss' : val_loss,
-            'epoch' : epoch,
+            'net': net.module if use_cuda else net,
+            'loss': val_loss,
+            'epoch': epoch,
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
@@ -230,9 +239,7 @@ def val(epoch):
         best_loss = val_loss
 
 
-
-for epoch in range(start_epoch, start_epoch+20):
+for epoch in range(start_epoch, start_epoch + 20):
     scheduler.step()
     train(epoch)
     val(epoch)
-

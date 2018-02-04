@@ -36,42 +36,46 @@ tumor_list = []
 labeling = []
 
 
-f = open(cp.path_for_generated_image + "/result.csv", 'w', encoding = 'utf-8', newline='')
+f = open(cp.path_for_generated_image + "/result.csv",
+         'w', encoding='utf-8', newline='')
 wr = csv.writer(f)
+
 
 def makecsv(output, label, size):
     for i in range(size):
-        #if output[i] == 1 :
+        # if output[i] == 1 :
         #    print(label[i])
         wr.writerow([label[i], output[i]])
 
+
 print('==> Preparing data..')
-transform_test =transforms.Compose([
+transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
 
 testset = get_test_dataset(transform_test, transform_test)
-testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=16)
+testloader = torch.utils.data.DataLoader(
+    testset, batch_size, shuffle=False, num_workers=16)
 
 print('==>Resuming from checkpoint..')
 checkpoint = torch.load('./checkpoint/ckpt.t7')
-#print(checkpoint)
+# print(checkpoint)
 net = checkpoint['net']
-
 
 
 if use_cuda:
     net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    net = torch.nn.DataParallel(
+        net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
 
 
 net.eval()
 
-for batch_idx, (inputs, label ) in enumerate(testloader):
-    #print(label)
-    #print(label.shape)
-    
+for batch_idx, (inputs, label) in enumerate(testloader):
+    # print(label)
+    # print(label.shape)
+
     if use_cuda:
         inputs = inputs.type(torch.cuda.FloatTensor)
         inputs = inputs.cuda()
@@ -79,11 +83,11 @@ for batch_idx, (inputs, label ) in enumerate(testloader):
     outputs = net(inputs)
     outputs = torch.squeeze(outputs)
     thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
-    #print(outputs)
+    # print(outputs)
     outputs = outputs + Variable(thresholding.cuda())
     outputs = torch.floor(outputs)
     outputs_cpu = outputs.data.cpu()
-    
+
     makecsv(outputs_cpu, label, inputs.size(0))
 
 f.close()
