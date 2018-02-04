@@ -68,17 +68,21 @@ class CAMELYON_PREPRO():
             num_of_patch_in_tumor_mask  = int(self.num_of_patch * self.ratio_of_tumor_patch)
             num_of_patch_in_tissue_mask = self.num_of_patch - num_of_patch_in_tumor_mask
 
-            set_of_inform_in_tumor  = self.get_inform_of_random_samples(
+
+            if usage == 'train':
+                mask_dilation, mask_erosion = self.get_dilaero(self.tumor_mask)
+                set_of_inform_in_tumor  = self.get_inform_of_random_samples(
+                                        mask_erosion,
+                                        num_of_patch_in_tumor_mask)
+                set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                    self.tissue_mask - mask_dilation,
+                                    num_of_patch_in_tissue_mask)
+            else:
+                set_of_inform_in_tumor = self.get_inform_of_random_samples(
                                         self.tumor_mask,
                                         num_of_patch_in_tumor_mask)
-            
-            #tumor_mask_dilation = get_dilation(self.tumor_mask)
-#            if usage == 'train':
-#                sef_of_inform_in_tissue = self.get_inform_of_random_samples(
-#                                        self.tissue_mask - tumor_mask_dilation, 
-#                                        num_of_patch_in_tissue_mask)
-#            else:
-            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                
+                set_of_inform_in_tissue = self.get_inform_of_random_samples(
                                     self.tissue_mask - self.tumor_mask,
                                     num_of_patch_in_tissue_mask)
 
@@ -115,10 +119,12 @@ class CAMELYON_PREPRO():
         self.create_dataset(usage, slide_filename)
         
 
-    #def get_dilation(mask):
-    #    kernel_dilation = np.ones((6, 6), np.uint8)
-    #    dilation = cv2.dilate(mask, kernel, iterations = 1)
-    #    return dilation
+    def get_dilaero(self, mask):
+        kernel_dilation = np.ones((19, 19), np.uint8)
+        dilation = cv2.dilate(mask, kernel_dilation, iterations = 1)
+        kernel_erosion = np.ones((9, 9), np.uint8)
+        erosion = cv2.erode(mask, kernel_erosion, iterations = 1)
+        return dilation, erosion
 
 
 
@@ -287,7 +293,32 @@ class CAMELYON_PREPRO():
 
             is_tumor = self.determine_tumor((x, y, patch_size[0], patch_size[1]))
             set_of_inform.append([is_tumor, x, y, patch_size[0], patch_size[1]])
-
+        """
+        else:
+            width, height = slide.level_dimensions[4]
+            small_patchsize = (int(patch_size[0] / downsamples), int(patch_size[1] / downsamples))
+            maxpixel = small_patchsize[0] * small_patchsize[1] * 255
+            region_list = []
+            for i in range(width+1-small_patchsize[0]):
+                for j in range(height+1-small_patchsize[1]):
+                    maskofpatch = mask[j : j+small_patchsize[0]-1, i : i+small_patchsize[1]-1]
+                    
+                    if np.sum(maskofpatch) >= rate_of_one * maxpixel:
+                        x = i * downsamples
+                        y = j * downsamples
+                        is_tumor = self.determine_tumor((x, y, patch_size[0], patch_size[1]))
+                        set_of_inform.append([is_tumor, x, y, patch_size[0], patch_size[1]])
+            print(len(set_of_inform))
+            set_of_inform = np.asarray(set_of_inform)
+            print(type(set_of_inform), " after asarray")
+            np.random.shuffle(set_of_inform)
+            print("okay")
+            print(set_of_inform.shape)
+            set_of_inform = set_of_inform[:num_of_patch]
+            print(set_of_inform.shape)
+            set_of_inform = set_of_inform.tolist()
+            print(set_of_inform)
+        """
         return set_of_inform
 
     """

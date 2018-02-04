@@ -30,7 +30,7 @@ from user_define import Config as cp
 
 use_cuda = torch.cuda.is_available()
 
-threshold = 0.2
+threshold = 0.35
 batch_size = 250
 tumor_list = []
 labeling = []
