@@ -10,6 +10,9 @@ from PIL import Image
 import pickle
 import time
 
+import tqdm
+from tqdm import tqdm
+
 # for multiprocessing
 import multiprocessing
 from multiprocessing import Pool, Queue, Process, Array
@@ -21,6 +24,9 @@ from user_define import Config as cf
 from user_define import Hyperparams as hp
 
 import pdb
+
+proc_num = 0
+
 
 class CAMELYON_PREPRO():
     """
@@ -284,14 +290,14 @@ class CAMELYON_PREPRO():
             raise RuntimeError(
                 'Random size is bigger than number of pixels in region')
 
-        #pdb.set_trace()
+        # pdb.set_trace()
         """
         mask = np.reshape(mask, -1)
         sorting = np.argsort(mask)[::-1][:number_of_region]
         np.random.shuffle(sorting)
         dataset_number = sorting[:num_of_patch].astype(int)
         """
-        mask = np.reshape(mask , -1)
+        mask = np.reshape(mask, -1)
         nonzero_pos = np.nonzero(mask)[0]
         np.random.shuffle(nonzero_pos)
         dataset_number = nonzero_pos[:num_of_patch]
@@ -348,6 +354,7 @@ class CAMELYON_PREPRO():
         num_of_patch = self.num_of_patch
         set_of_inform = self.set_of_inform
         set_of_patch = []
+        global proc_num
 
         i = 1
 
@@ -370,15 +377,16 @@ class CAMELYON_PREPRO():
             print("\n")
         else:
             print("Do not save patch image")
+            pbar = tqdm(len(set_of_inform), position=proc_num)
             for pos in set_of_inform:
                 is_tumor, x, y, w, h = pos
                 patch = slide.read_region((x, y), 0, (w, h)).convert("RGB")
                 #rgb = cv2.cvtColor(patch, CV_COLOR_RGBA2RGB)
                 set_of_patch.append(np.array(patch))
                 # set_of_patch.append(np.array(patch))
-                print("\rPercentage : %d / %d" % (i, num_of_patch), end="")
+                #print("\rPercentage : %d / %d" % (i, num_of_patch), end="")
                 i = i + 1
-
+                pbar.update()
             print("\n")
 
         set_of_patch = np.array(set_of_patch)
@@ -504,8 +512,11 @@ def read_slide_and_save_bin_multi(usage, list_of_slide):
     print(usage)
     pool = Pool(multiprocessing.cpu_count() - 1)
 
+    # with tqdm(total=len(list_of_slide)) as pbar:
     result = pool.starmap_async(
         CAMELYON_PREPRO, zip(repeat(usage), list_of_slide))
+
+    # pbar.close()
 
     result.wait()
 
@@ -516,10 +527,11 @@ def read_slide_and_save_bin_multi(usage, list_of_slide):
 
 def create_train_dataset(list_of_slide_for_train):
     print("create train dataset")
-    #read_slide_and_save_bin_multi("train",
+    # read_slide_and_save_bin_multi("train",
     #                              list_of_slide_for_train)
     read_slide_and_save_bin_multi("val",
                                   list_of_slide_for_train)
+
 
 """
 """
@@ -527,14 +539,20 @@ def create_train_dataset(list_of_slide_for_train):
 
 def create_val_dataset(list_of_slide_for_val):
     print("create val dataset")
-    #read_slide_and_save_bin_multi("val",
+    # read_slide_and_save_bin_multi("val",
     #                              list_of_slide_for_val)
 
     read_slide_and_save_bin_multi("val",
                                   list_of_slide_for_val)
 
+
 """
 """
+
+
+def proc_num_plus():
+    global proc_num
+    proc_num += 1
 
 
 def create_test_dataset():
