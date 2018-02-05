@@ -75,7 +75,6 @@ class CAMELYON_PREPRO():
             num_of_patch_in_tumor_mask = int(
                 self.num_of_patch * self.ratio_of_tumor_patch)
             num_of_patch_in_tissue_mask = self.num_of_patch - num_of_patch_in_tumor_mask
-
             if usage == 'train':
                 mask_dilation, mask_erosion = self.get_dilaero(self.tumor_mask)
                 dilation_of_tissue, _ = self.get_dilaero(self.tissue_mask)
