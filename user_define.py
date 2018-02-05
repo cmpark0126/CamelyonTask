@@ -32,20 +32,20 @@ class Config:
     key_of_informs = 'informations'
 
     list_of_slide_for_train = ['b_1',
-                               'b_2',
                                'b_3',
                                'b_4',
-                               'b_5',
                                'b_6',
                                'b_7',
                                'b_8',
                                'b_9',
-                               'b_10',
                                'b_11',
-                               'b_12', ]
-    list_of_slide_for_val = ['b_13',
-                             'b_14',
-                             'b_15', ]
+                               'b_12',
+                               'b_14']
+    list_of_slide_for_val = ['b_2',
+                             'b_5',
+                             'b_10',
+                             'b_13',
+                             'b_15']
 
     # list_of_slide_for_train     = ['b_0',
     #                                'b_2',]
@@ -59,8 +59,8 @@ class Hyperparams:
     patch_size = (304, 304)
 
     # for train dataset
-    number_of_patch_per_slide = 5000
-    ratio_of_tumor_patch = 0.2
+    number_of_patch_per_slide = 7000
+    ratio_of_tumor_patch = 0.5
     threshold_of_tumor_rate = 0.4
 
     # for test dataset

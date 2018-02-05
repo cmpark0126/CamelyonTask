@@ -29,13 +29,13 @@ from logger import Logger
 from load_dataset import get_train_dataset, get_val_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.0001, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
-best_loss = 1000  # best test accuracy
+best_score = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 threshold = 0.2
@@ -63,9 +63,9 @@ transform_test = transforms.Compose([
 trainset = get_train_dataset(transform_train, transform_test)
 valset = get_val_dataset(transform_train, transform_test)
 trainloader = torch.utils.data.DataLoader(
-    trainset, batch_size, shuffle=True, num_workers=16)
+    trainset, batch_size, shuffle=True, num_workers=32)
 valloader = torch.utils.data.DataLoader(
-    valset, batch_size, shuffle=True, num_workers=16)
+    valset, batch_size, shuffle=True, num_workers=32)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
 
 
@@ -76,13 +76,13 @@ if args.resume:
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
     net = checkpoint['net']
-    best_loss = checkpoint['loss']
+    best_score = checkpoint['score']
     start_epoch = checkpoint['epoch']
 
 else:
     print('==> Building model..')
-#    net = resnet101()
-    net = densenet121()
+    net = resnet101()
+#    net = densenet121()
 
 if use_cuda:
     net.cuda()
@@ -98,7 +98,7 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr,
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
 #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, verbose=True)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
 # Training
@@ -138,23 +138,25 @@ def train(epoch):
 
 
 def val(epoch):
-    global best_loss
+    global best_score
     global loss_list
 
     net.eval()
 
-    hubo_num = 20
+    hubo_num = 50
     val_loss = 0
     correct = 0
     total = 0
-    positive = 0
-    negative = 0
+    real_tumor = 0
+    real_normal= 0
     false_positive = [0] * (hubo_num + 1)
     false_negative = [0] * (hubo_num + 1)
     sensitivity = []
     specificity = []
-    best_correction = 0
+    best_score_inside = 0
     best_threshold = 0.2
+    best_recall = 0
+    best_precision = 0
 
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
@@ -180,18 +182,23 @@ def val(epoch):
 
             false_positive[i] += fposi.data.cpu().sum()
             false_negative[i] += fnega.data.cpu().sum()
-        positive += targets.data.cpu().sum()
-        negative += (batch_size - targets.data.cpu().sum())
+        real_tumor += targets.data.cpu().sum()
+        real_normal += (batch_size - targets.data.cpu().sum())
 
     for i in range(hubo_num + 1):
-        error = false_negative[i] + false_positive[i]
-        if total - error > best_correction:
-            best_correction = total - error
-            best_threshold = i / hubo_num
-        sensitivity.append(1 - false_negative[i] / positive)
-        specificity.append(1 - false_positive[i] / negative)
+        true_positive = real_tumor - false_negative[i]
+        precision = true_positive / (true_positive + false_positive[i])
+        recall = true_positive / (true_positive + false_negative[i])
+        f_score = 2 * precision * recall / (precision + recall)
+        if f_score > best_score_inside:
+            best_score_inside = f_score
+            best_threshold = i
+            best_recall = recall
+            best_precision = precision
+        sensitivity.append(1 - false_negative[i] / real_tumor)
+        specificity.append(1 - false_positive[i] / real_normal)
         print("Threshold: ", i / hubo_num,
-              ", Accuracy: ", (total - error) / total)
+              ", Accuracy: ", (total - false_negative[i] - false_positive[i]) / total)
 
     plt.plot(specificity, sensitivity)
     plt.xlabel('Specificity')
@@ -203,11 +210,14 @@ def val(epoch):
 
 # Save checkpoint.
 
-    acc = 100. * best_correction / total
-    print('Best accuracy: ', acc, 'at threshold: ', best_threshold)
+    acc = 100. * (1 -  (false_negative[best_threshold]+false_positive[best_threshold])/total)
+    print('Best score: ', best_score_inside, 'at threshold: ', best_threshold / hubo_num)
+    print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
+    print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
     info = {
         'loss': val_loss,
-        'accuracy': 100. * best_correction / total
+        'Acc': acc,
+        'F_score': best_score_inside
     }
 
     #============ TensorBoard logging ============#
@@ -229,22 +239,22 @@ def val(epoch):
 
 #       for tag, images in info.items():
 #           logger.image_summary(tag, images, step+1)
-    scheduler.step(val_loss)
-    if val_loss < best_loss:
+    scheduler.step(best_score_inside)
+    if best_score < best_score_inside:
         print('Saving..')
         state = {
             'net': net.module if use_cuda else net,
-            'loss': val_loss,
+            'score': best_score_inside,
             'epoch': epoch,
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
         torch.save(state, './checkpoint/ckpt.pth.tar')
-        best_loss = val_loss
-    print(val_loss, ", loss of validation")
+        best_score = best_score_inside
+    print(best_score, ", F-score")
 
 
 
-for epoch in range(start_epoch, start_epoch + 50):
+for epoch in range(start_epoch, start_epoch + 30):
     train(epoch)
     val(epoch)
