@@ -25,8 +25,6 @@ from user_define import Hyperparams as hp
 
 import pdb
 
-proc_num = 0
-
 
 class CAMELYON_PREPRO():
     """
@@ -379,21 +377,14 @@ class CAMELYON_PREPRO():
             print("\n")
         else:
             print("Do not save patch image")
-            pbar = tqdm(len(set_of_inform), position=proc_num)
             for pos in set_of_inform:
                 is_tumor, x, y, w, h = pos
                 patch = slide.read_region((x, y), 0, (w, h)).convert("RGB")
                 #rgb = cv2.cvtColor(patch, CV_COLOR_RGBA2RGB)
                 set_of_patch.append(np.array(patch))
                 # set_of_patch.append(np.array(patch))
-<<<<<<< HEAD
                 print("\rPercentage : %d / %d" % (i, num_of_patch), end="")
                 i = i + 1
-=======
-                #print("\rPercentage : %d / %d" % (i, num_of_patch), end="")
-                i = i + 1
-                pbar.update()
->>>>>>> cfdfdeebcaec254f04fa1229d9f0267bef700595
             print("\n")
 
         set_of_patch = np.array(set_of_patch)
@@ -555,12 +546,6 @@ def create_val_dataset(list_of_slide_for_val):
 
 """
 """
-
-
-def proc_num_plus():
-    global proc_num
-    proc_num += 1
-
 
 def create_test_dataset():
     print("create test dataset")
