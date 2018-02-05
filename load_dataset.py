@@ -13,6 +13,7 @@ import torch.utils.data as data
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
+
 class CAMELYON_DATALOADER(data.Dataset):
     """
     Args:
@@ -58,10 +59,9 @@ class CAMELYON_DATALOADER(data.Dataset):
             fo.close()
 
         self.data = np.concatenate(self.data)
-        print(self.data.shape)
+        print("data shape is ", self.data.shape)
         self.labels = np.concatenate(self.labels)
-        print(self.labels.shape)
-
+        print("label shape is ", self.labels.shape)
 
     def __getitem__(self, index):
         """
@@ -104,20 +104,23 @@ def get_train_dataset(train_transform, test_transform,
                                         target_transform=train_target_transform)
     return train_dataset
 
+
 def get_val_dataset(train_transform, test_transform,
-                      train_target_transform=None, test_target_transform=None):
+                    train_target_transform=None, test_target_transform=None):
 
     val_dataset = CAMELYON_DATALOADER(usage='val',
                                       transform=test_transform,
                                       target_transform=test_target_transform)
     return val_dataset
 
+
 def get_test_dataset(train_transform, test_transform,
-                      train_target_transform=None, test_target_transform=None):
+                     train_target_transform=None, test_target_transform=None):
     test_dataset = CAMELYON_DATALOADER(usage='test',
                                        transform=test_transform,
                                        target_transform=test_target_transform)
     return test_dataset
+
 
 if __name__ == "__main__":
     get_train_dataset(None, None)

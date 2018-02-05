@@ -29,16 +29,18 @@ from logger import Logger
 from load_dataset import get_train_dataset, get_val_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
+parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+parser.add_argument('--resume', '-r', action='store_true',
+                    help='resume from checkpoint')
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
-best_acc = 0  # best test accuracy
+best_loss = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-threshold = 0.5
-batch_size = 100
+threshold = 0.2
+batch_size = 250
+
 
 def to_np(x):
     return x.data.cpu().numpy()
@@ -58,10 +60,11 @@ transform_test = transforms.Compose([
 
 trainset = get_train_dataset(transform_train, transform_test)
 valset = get_val_dataset(transform_train, transform_test)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size, shuffle=True, num_workers=16)
-valloader = torch.utils.data.DataLoader(valset, batch_size, shuffle=True, num_workers=16)
+trainloader = torch.utils.data.DataLoader(
+    trainset, batch_size, shuffle=True, num_workers=16)
+valloader = torch.utils.data.DataLoader(
+    valset, batch_size, shuffle=True, num_workers=16)
 # testloader = torch.utils.data.DataLoader(testset, batch_size, shuffle=False, num_workers=2)
-
 
 
 # Model
@@ -71,28 +74,32 @@ if args.resume:
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
     net = checkpoint['net']
-    best_acc = checkpoint['acc']
+    best_loss = checkpoint['loss']
     start_epoch = checkpoint['epoch']
 
 else:
     print('==> Building model..')
-    net = resnet101()
-    #net = DenseNet121()
+#    net = resnet101()
+    net = densenet121()
 
 if use_cuda:
     net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    net = torch.nn.DataParallel(
+        net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
 
 
 logger = Logger('./logs')
 criterion = nn.BCELoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=9e-4)
+optimizer = optim.SGD(net.parameters(), lr=args.lr,
+                      momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
 # Training
+
+
 def train(epoch):
     print('\nEpoch: %d' % epoch)
 
@@ -103,7 +110,8 @@ def train(epoch):
 
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
-            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
+            inputs, targets = inputs.type(
+                torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
             inputs, targets = inputs.cuda(), targets.cuda()
 
         optimizer.zero_grad()
@@ -113,7 +121,7 @@ def train(epoch):
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
-        thresholding = torch.ones(batch_size) * (1 - threshold)
+        thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
 
@@ -122,12 +130,12 @@ def train(epoch):
         correct += predicted.data.eq(targets.data).cpu().sum()
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+                     % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+
 
 def val(epoch):
     global best_acc
     global loss_list
-
 
     net.eval()
 
@@ -141,10 +149,13 @@ def val(epoch):
     false_negative = [0] * (hubo_num + 1)
     sensitivity = []
     specificity = []
+    best_correction = 0
+    best_threshold = 0.2
 
     for batch_idx, (inputs, targets) in enumerate(valloader):
         if use_cuda:
-            inputs, targets = inputs.type(torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
+            inputs, targets = inputs.type(
+                torch.cuda.FloatTensor), targets.type(torch.cuda.FloatTensor)
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
         outputs = net(inputs)
@@ -152,12 +163,12 @@ def val(epoch):
         loss = criterion(outputs, targets)
         val_loss += loss.data[0]
         total += targets.size(0)
-        for i in range(hubo_num+1):
-            thresholding = torch.ones(batch_size) * (1 - i/hubo_num)
+        for i in range(hubo_num + 1):
+            thresholding = torch.ones(inputs.size(0)) * (1 - i / hubo_num)
             predicted = outputs + Variable(thresholding.cuda())
             predicted = torch.floor(predicted)
             finderror = (targets - predicted) * 0.5
-            biased = torch.ones(batch_size) * 0.5
+            biased = torch.ones(inputs.size(0)) * 0.5
             fposi = finderror + Variable(biased.cuda())
             fnega = -finderror + Variable(biased.cuda())
             fposi = torch.floor(fposi)
@@ -168,48 +179,44 @@ def val(epoch):
         positive += targets.data.cpu().sum()
         negative += (batch_size - targets.data.cpu().sum())
 
-    for i in range(hubo_num+1):
+    for i in range(hubo_num + 1):
+        error = false_negative[i] + false_positive[i]
+        if total - error > best_correction:
+            best_correction = total - error
+            best_threshold = i / hubo_num
         sensitivity.append(1 - false_negative[i] / positive)
         specificity.append(1 - false_positive[i] / negative)
-        plt.plot(specificity, sensitivity)
+        print("Threshold: ", i / hubo_num,
+              ", Accuracy: ", (total - error) / total)
 
+    plt.plot(specificity, sensitivity)
     plt.xlabel('Specificity')
     plt.ylabel('Sensitivity')
     fig = plt.gcf()
     fig.savefig('ROC curve.png')
-    print(sensitivity, ", sensitivity, ", specificity, ", specificity")
+    fig = plt.gcf().clear()
 
-
-
-
-#        correct += predicted.data.eq(targets.data).cpu().sum()
-
-#        progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-#            % (val_loss/(batch_idx+1), 100.*correct/total, correct, total))
-
-
-    print(false_positive, ", false_positive, ", false_negative, ", false_negative")
-    print(positive, ", positive, ", negative, ", negative")
 
 # Save checkpoint.
 
-    acc = 100.*correct/total
+    acc = 100. * best_correction / total
+    print('Best accuracy: ', acc, 'at threshold: ', best_threshold)
     info = {
-            'loss': loss.data[0],
-            'accuracy': 100.*correct/total
-             }
+        'loss': loss.data[0],
+        'accuracy': 100. * best_correction / total
+    }
 
     #============ TensorBoard logging ============#
     # (1) Log the scalar values
 
     for tag, value in info.items():
-        logger.scalar_summary(tag, value, epoch+1)
+        logger.scalar_summary(tag, value, epoch + 1)
 
     # (2) Log values and gradients of the parameters (histogram)
     for tag, value in net.named_parameters():
         tag = tag.replace('.', '/')
-        logger.histo_summary(tag, to_np(value), epoch+1)
-        logger.histo_summary(tag+'/grad', to_np(value.grad), epoch+1)
+        logger.histo_summary(tag, to_np(value), epoch + 1)
+        logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
 
     # (3) Log the images
 #       info = {
@@ -219,24 +226,26 @@ def val(epoch):
 #       for tag, images in info.items():
 #           logger.image_summary(tag, images, step+1)
 
-
-    if acc > best_acc:
+    if val_loss < best_loss:
         print('Saving..')
         state = {
-            'net' : net.module if use_cuda else net,
-            'acc' : acc,
-            'epoch' : epoch,
+            'net': net.module if use_cuda else net,
+            'loss': val_loss,
+            'epoch': epoch,
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
+<<<<<<< HEAD
         torch.save(state, './checkpoint/ckpt.pth.tar')
         best_acc = acc
 
+=======
+        torch.save(state, './checkpoint/ckpt.t7')
+        best_loss = val_loss
+>>>>>>> cfdfdeebcaec254f04fa1229d9f0267bef700595
 
 
-for epoch in range(start_epoch, start_epoch+1):
-#    scheduler.step()
+for epoch in range(start_epoch, start_epoch + 20):
+    scheduler.step()
     train(epoch)
     val(epoch)
-
-# test()

@@ -58,7 +58,11 @@ testloader = torch.utils.data.DataLoader(
     testset, batch_size, shuffle=False, num_workers=16)
 
 print('==>Resuming from checkpoint..')
+<<<<<<< HEAD
 checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
+=======
+checkpoint = torch.load('./checkpoint/ckpt.t7')
+>>>>>>> cfdfdeebcaec254f04fa1229d9f0267bef700595
 # print(checkpoint)
 net = checkpoint['net']
 
