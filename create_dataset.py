@@ -298,9 +298,10 @@ class CAMELYON_PREPRO():
         dataset_number = sorting[:num_of_patch].astype(int)
         """
         mask = np.reshape(mask, -1)
-        nonzero_pos = np.nonzero(mask)[0]
-        np.random.shuffle(nonzero_pos)
-        dataset_number = nonzero_pos[:num_of_patch]
+        #mask_pos = np.nonzero(mask)[0]
+        mask_pos = np.argwhere(mask > 0).squeeze()
+        np.random.shuffle(mask_pos)
+        dataset_number = mask_pos[:num_of_patch]
 
         width, _ = slide.level_dimensions[level]
         goleft = int(patch_size[0] / (2 * downsamples))
