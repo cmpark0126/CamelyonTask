@@ -10,14 +10,10 @@ from PIL import Image
 import pickle
 import time
 
-import tqdm
-from tqdm import tqdm
-
 # for multiprocessing
 import multiprocessing
 from multiprocessing import Pool, Queue, Process, Array
 from itertools import repeat
-# from tqdm import tqdm
 
 # user define variable
 from user_define import Config as cf
@@ -31,7 +27,7 @@ class CAMELYON_PREPRO():
     CAMELYON Dataset preprocessed by DEEPBIO
 
     Args:
-        slide_filename (string)
+        slide_filename (string) ex) 'b_0'
     """
 
     # config
@@ -56,7 +52,7 @@ class CAMELYON_PREPRO():
                                            xml_filename)
             self.annotation = self.get_annotation_from_xml(target_xml_path)
 
-            # for save action
+            # for save image
             self.patch_path = os.path.join(cf.path_for_generated_image,
                                            slide_filename,
                                            cf.base_folder_for_patch)
@@ -68,35 +64,42 @@ class CAMELYON_PREPRO():
             self.check_path(self.etc_path)
 
             # for create patch array
-            self.tissue_mask = self.create_tissue_mask(
-                cf.save_tissue_mask_image)
+            self.tissue_mask = self.create_tissue_mask(cf.save_tissue_mask_image)
             self.tumor_mask = self.create_tumor_mask(cf.save_tumor_mask_image)
 
+<<<<<<< HEAD
             num_of_patch_in_tumor_mask = int(
                 self.num_of_patch * self.ratio_of_tumor_patch)
             num_of_patch_in_tissue_mask = self.num_of_patch - num_of_patch_in_tumor_mask
+=======
+            num_of_patch_in_tumor = int(self.num_of_patch * self.ratio_of_tumor_patch)
+            num_of_patch_in_tissue = self.num_of_patch - num_of_patch_in_tumor
+
+>>>>>>> issue_refactoring
             if usage == 'train':
-                mask_dilation, mask_erosion = self.get_dilaero(self.tumor_mask)
-                dilation_of_tissue, _ = self.get_dilaero(self.tissue_mask)
+                dila_of_tumor, ero_of_tumor = self.get_dilaero(self.tumor_mask)
+                dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)
                 set_of_inform_in_tumor = self.get_inform_of_random_samples(
-                    mask_erosion,
-                    num_of_patch_in_tumor_mask)
+                                            ero_of_tumor,
+                                            num_of_patch_in_tumor)
                 set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                    dilation_of_tissue - mask_dilation,
-                    num_of_patch_in_tissue_mask)
+                                            dila_of_tissue - dila_of_tumor,
+                                            num_of_patch_in_tissue)
             else:
-                dilation_of_tissue, _ = self.get_dilaero(self.tissue_mask)
+                dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)
                 set_of_inform_in_tumor = self.get_inform_of_random_samples(
-                    self.tumor_mask,
-                    num_of_patch_in_tumor_mask)
-
+                                            self.tumor_mask,
+                                            num_of_patch_in_tumor)
                 set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                    dilation_of_tissue - self.tumor_mask,
-                    num_of_patch_in_tissue_mask)
+                                            dila_of_tissue - self.tumor_mask,
+                                            num_of_patch_in_tissue)
 
-            self.set_of_inform = np.array(
-                set_of_inform_in_tumor + set_of_inform_in_tissue)
+            self.set_of_inform = set_of_inform_in_tumor + set_of_inform_in_tissue
+            self.set_of_inform = np.array(self.set_of_inform)
+
             self.set_of_patch = self.get_patch_data(cf.save_patch_images)
+            self.set_of_patch = np.array(self.set_of_patch)
+
 
             if cf.save_thumbnail_image:
                 self.thumbnail = self.create_thumbnail()
@@ -125,13 +128,6 @@ class CAMELYON_PREPRO():
             raise RuntimeError("usage is invalid value")
 
         self.create_dataset(usage, slide_filename)
-
-    def get_dilaero(self, mask):
-        kernel_dilation = np.ones((19, 19), np.uint8)
-        dilation = cv2.dilate(mask, kernel_dilation, iterations=1)
-        kernel_erosion = np.ones((9, 9), np.uint8)
-        erosion = cv2.erode(mask, kernel_erosion, iterations=1)
-        return dilation, erosion
 
     """
     param :
@@ -165,11 +161,10 @@ class CAMELYON_PREPRO():
 
         while(True):
             split = dir_name.split('/', 1)
-
             path = path + split[0] + '/'
 
             if not os.path.isdir(path):
-                os.mkdir(path, )
+                os.mkdir(path)
                 print(path, "is created!")
 
             if len(split) == 1:
@@ -184,7 +179,6 @@ class CAMELYON_PREPRO():
 
     return : tissue_mask (numpy_array)
     """
-
     def create_tissue_mask(self, save_image=False):
         slide = self.slide
         level = self.level
@@ -196,8 +190,10 @@ class CAMELYON_PREPRO():
         img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
         img = img[:, :, 1]
 
-        _, tissue_mask = cv2.threshold(
-            img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, tissue_mask = cv2.threshold(img,
+                                       0,
+                                       255,
+                                       cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         if save_image:
             target_image_path = os.path.join(self.etc_path,
@@ -206,12 +202,12 @@ class CAMELYON_PREPRO():
 
         return tissue_mask
 
+
     """
     param :
 
     return : tumor mask (numpy_array)
     """
-
     def create_tumor_mask(self, save_image=False):
         slide = self.slide
         level = self.level
@@ -229,6 +225,16 @@ class CAMELYON_PREPRO():
         return tumor_mask
 
     """
+    """
+    def get_dilaero(self, mask):
+        kernel_dilation = np.ones((19, 19), np.uint8)
+        dilation = cv2.dilate(mask, kernel_dilation, iterations=1)
+        kernel_erosion = np.ones((9, 9), np.uint8)
+        erosion = cv2.erode(mask, kernel_erosion, iterations=1)
+        return dilation, erosion
+
+
+    """
     param : mask (numpy)
             patch_pos (tuple(x, y, width, height))
             percent (what percent will you determine as tumor)
@@ -237,7 +243,6 @@ class CAMELYON_PREPRO():
     return : label (int)
 
     """
-
     def determine_tumor(self, patch_pos):
         downsamples = self.downsamples
         threshold = self.threshold_of_tumor_rate
@@ -266,6 +271,7 @@ class CAMELYON_PREPRO():
         else:
             return 0
 
+
     """
     param : slide file (openslide)
             num_of_patch (int)
@@ -275,7 +281,6 @@ class CAMELYON_PREPRO():
 
     return : set of position(list)
     """
-
     def get_inform_of_random_samples(self, mask, num_of_patch):
         slide = self.slide
         level = self.level
@@ -289,15 +294,7 @@ class CAMELYON_PREPRO():
             raise RuntimeError(
                 'Random size is bigger than number of pixels in region')
 
-        # pdb.set_trace()
-        """
         mask = np.reshape(mask, -1)
-        sorting = np.argsort(mask)[::-1][:number_of_region]
-        np.random.shuffle(sorting)
-        dataset_number = sorting[:num_of_patch].astype(int)
-        """
-        mask = np.reshape(mask, -1)
-        #mask_pos = np.nonzero(mask)[0]
         mask_pos = np.argwhere(mask > 0).squeeze()
         np.random.shuffle(mask_pos)
         dataset_number = mask_pos[:num_of_patch]
@@ -314,41 +311,15 @@ class CAMELYON_PREPRO():
                 (x, y, patch_size[0], patch_size[1]))
             set_of_inform.append(
                 [is_tumor, x, y, patch_size[0], patch_size[1]])
-        """
-        else:
-            width, height = slide.level_dimensions[4]
-            small_patchsize = (int(patch_size[0] / downsamples), int(patch_size[1] / downsamples))
-            maxpixel = small_patchsize[0] * small_patchsize[1] * 255
-            region_list = []
-            for i in range(width+1-small_patchsize[0]):
-                for j in range(height+1-small_patchsize[1]):
-                    maskofpatch = mask[j : j+small_patchsize[0]-1, i : i+small_patchsize[1]-1]
 
-                    if np.sum(maskofpatch) >= rate_of_one * maxpixel:
-                        x = i * downsamples
-                        y = j * downsamples
-                        is_tumor = self.determine_tumor((x, y, patch_size[0], patch_size[1]))
-                        set_of_inform.append([is_tumor, x, y, patch_size[0], patch_size[1]])
-            print(len(set_of_inform))
-            set_of_inform = np.asarray(set_of_inform)
-            print(type(set_of_inform), " after asarray")
-            np.random.shuffle(set_of_inform)
-            print("okay")
-            print(set_of_inform.shape)
-            set_of_inform = set_of_inform[:num_of_patch]
-            print(set_of_inform.shape)
-            set_of_inform = set_of_inform.tolist()
-            print(set_of_inform)
-        """
         return set_of_inform
+
 
     """
     param :
 
     return :
-
     """
-
     def get_patch_data(self, save_image=False):
         slide = self.slide
         num_of_patch = self.num_of_patch
@@ -379,23 +350,19 @@ class CAMELYON_PREPRO():
             for pos in set_of_inform:
                 is_tumor, x, y, w, h = pos
                 patch = slide.read_region((x, y), 0, (w, h)).convert("RGB")
-                #rgb = cv2.cvtColor(patch, CV_COLOR_RGBA2RGB)
                 set_of_patch.append(np.array(patch))
-                # set_of_patch.append(np.array(patch))
                 print("\rPercentage : %d / %d" % (i, num_of_patch), end="")
                 i = i + 1
             print("\n")
 
-        set_of_patch = np.array(set_of_patch)
-
         return set_of_patch
+
 
     """
     param :
 
     return :
     """
-
     def create_dataset(self, usage, slide_filename):
         set_of_patch = self.set_of_patch
         set_of_inform = self.set_of_inform
@@ -421,6 +388,7 @@ class CAMELYON_PREPRO():
         pickle.dump(dataset, fo, pickle.HIGHEST_PROTOCOL)
         fo.close()
 
+
     """
     param : slide file (openslide)
             level (int)
@@ -428,12 +396,13 @@ class CAMELYON_PREPRO():
     return : thumbnail (numpy array)
 
     """
-
     def create_thumbnail(self):
         col, row = self.slide.level_dimensions[self.level]
         thumbnail = self.slide.get_thumbnail((col, row))
+
         thumbnail = np.array(thumbnail)
-        cv2.imwrite(os.path.join(self.etc_path, "thumbnail.jpg"), thumbnail)
+        target_image_path = os.path.join(self.etc_path, "thumbnail.jpg")
+        cv2.imwrite(target_image_path, thumbnail)
         return thumbnail
 
     """
@@ -443,11 +412,17 @@ class CAMELYON_PREPRO():
 
     return : thumbnail (numpy array)
     """
-
     def draw_tumor_pos_on_thumbnail(self):
-        cv2.drawContours(self.thumbnail, self.annotation, -1, (0, 255, 0), 4)
-        cv2.imwrite(os.path.join(self.etc_path,
-                                 "tumor_to_thumbnail.jpg"), self.thumbnail)
+        thumbnail = self.thumbnail
+        annotation = self.annotation
+
+        cv2.drawContours(thumbnail, annotation, -1, (0, 255, 0), 4)
+        target_image_path = os.path.join(self.etc_path,
+                                         "tumor_to_thumbnail.jpg")
+        cv2.imwrite(target_image_path, thumbnail)
+
+        return thumbnail
+
 
     """
     brief :
@@ -457,95 +432,69 @@ class CAMELYON_PREPRO():
     return :
 
     """
-
     def draw_patch_pos_on_thumbnail(self):
-        for pos in self.set_of_inform:
-            is_tumor, x, y, w, h = pos
+        set_of_inform = self.set_of_inform
+        thumbnail = self.thumbnail
+        downsamples = self.downsamples
+
+        for inform in set_of_inform:
+            is_tumor, x, y, w, h = inform
+            min_x = int(x/downsamples)
+            min_y = int(y/downsamples)
+            max_x = min_x + int(w/downsamples)
+            max_y = min_y + int(h/downsamples)
+
             if is_tumor:
-                cv2.rectangle(self.thumbnail, (int(x / self.downsamples), int(y / self.downsamples)), (int(x / self.downsamples) +
-                                                                                                       int(w / self.downsamples), int(y / self.downsamples) + int(h / self.downsamples)), (255, 0, 0), 4)
+                cv2.rectangle(thumbnail,
+                              (min_x, min_y),
+                              (max_x, max_y),
+                              (255, 0, 0),
+                              4)
             else:
-                cv2.rectangle(self.thumbnail, (int(x / self.downsamples), int(y / self.downsamples)), (int(x / self.downsamples) +
-                                                                                                       int(w / self.downsamples), int(y / self.downsamples) + int(h / self.downsamples)), (0, 0, 255), 4)
+                cv2.rectangle(thumbnail,
+                              (min_x, min_y),
+                              (max_x, max_y),
+                              (0, 0, 255),
+                              4)
 
         target_image_path = os.path.join(self.etc_path,
                                          "patch_pos_to_thumbnail.jpg")
-        cv2.imwrite(target_image_path, self.thumbnail)
+        cv2.imwrite(target_image_path, thumbnail)
 
-
-"""
-param :
-
-return :
-"""
-
-
-def get_file_list(usage):
-    if usage == "slide" or usage == "annotation":
-        print("get list of file at" + os.path.join("./Data", usage))
-        file_list = os.listdir(os.path.join("./Data", usage))
-        file_list.sort()
-        return file_list
-    else:
-        raise RuntimeError("invalid usage")
+        return thumbnail
 
 
 """
 """
-
-
-def read_slide_and_save_bin(usage, list_of_slide):
-    for slide in list_of_slide:
-        print(slide, "on working...")
-        CAMELYON_PREPRO(usage, slide)
-
-
-"""
-"""
-
-
-def read_slide_and_save_bin_multi(usage, list_of_slide):
+def prepro_use_multiprocess(usage, list_of_slide):
     print(list_of_slide)
     print(usage)
     pool = Pool(multiprocessing.cpu_count() - 1)
 
-    # with tqdm(total=len(list_of_slide)) as pbar:
     result = pool.starmap_async(
         CAMELYON_PREPRO, zip(repeat(usage), list_of_slide))
-
-    # pbar.close()
 
     result.wait()
 
 
 """
 """
-
-
 def create_train_dataset(list_of_slide_for_train):
     print("create train dataset")
-    # read_slide_and_save_bin_multi("train",
-    #                              list_of_slide_for_train)
-    read_slide_and_save_bin_multi("train",
-                                  list_of_slide_for_train)
+    prepro_use_multiprocess("train",
+                            list_of_slide_for_train)
 
 
 """
 """
-
-
 def create_val_dataset(list_of_slide_for_val):
     print("create val dataset")
-    # read_slide_and_save_bin_multi("val",
-    #                              list_of_slide_for_val)
-
-    read_slide_and_save_bin_multi("val",
-                                  list_of_slide_for_val)
+    prepro_use_multiprocess("val",
+                            list_of_slide_for_val)
 
 
 """
 """
-
 def create_test_dataset():
     print("create test dataset")
     CAMELYON_PREPRO("test", "test")
@@ -556,7 +505,7 @@ if __name__ == "__main__":
 
     create_train_dataset(cf.list_of_slide_for_train)
     create_val_dataset(cf.list_of_slide_for_val)
-#    create_test_dataset()
+    create_test_dataset()
 
     end_time = time.time()
     print("Run time is :  ", end_time - start_time)
