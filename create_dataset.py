@@ -527,7 +527,7 @@ def create_train_dataset(list_of_slide_for_train):
     print("create train dataset")
     # read_slide_and_save_bin_multi("train",
     #                              list_of_slide_for_train)
-    read_slide_and_save_bin_multi("val",
+    read_slide_and_save_bin_multi("train",
                                   list_of_slide_for_train)
 
 
