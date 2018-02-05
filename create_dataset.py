@@ -67,15 +67,9 @@ class CAMELYON_PREPRO():
             self.tissue_mask = self.create_tissue_mask(cf.save_tissue_mask_image)
             self.tumor_mask = self.create_tumor_mask(cf.save_tumor_mask_image)
 
-<<<<<<< HEAD
-            num_of_patch_in_tumor_mask = int(
-                self.num_of_patch * self.ratio_of_tumor_patch)
-            num_of_patch_in_tissue_mask = self.num_of_patch - num_of_patch_in_tumor_mask
-=======
             num_of_patch_in_tumor = int(self.num_of_patch * self.ratio_of_tumor_patch)
             num_of_patch_in_tissue = self.num_of_patch - num_of_patch_in_tumor
 
->>>>>>> issue_refactoring
             if usage == 'train':
                 dila_of_tumor, ero_of_tumor = self.get_dilaero(self.tumor_mask)
                 dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)

@@ -18,8 +18,7 @@ class CAMELYON_DATALOADER(data.Dataset):
     """
     Args:
         root (string): Root directory of dataset where directory
-        train (bool, optional): If True, creates dataset from training set, otherwise
-            creates from test set.
+        usage (string, optional)
         transform (callable, optional): A function/transform that  takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
         target_transform (callable, optional): A function/transform that takes in the
