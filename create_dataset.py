@@ -354,7 +354,6 @@ class CAMELYON_PREPRO():
         num_of_patch = self.num_of_patch
         set_of_inform = self.set_of_inform
         set_of_patch = []
-        global proc_num
 
         i = 1
 

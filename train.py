@@ -35,7 +35,7 @@ parser.add_argument('--resume', '-r', action='store_true',
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
-best_loss = 0  # best test accuracy
+best_loss = 1000  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 threshold = 0.2
@@ -235,14 +235,9 @@ def val(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-<<<<<<< HEAD
         torch.save(state, './checkpoint/ckpt.pth.tar')
         best_acc = acc
 
-=======
-        torch.save(state, './checkpoint/ckpt.t7')
-        best_loss = val_loss
->>>>>>> cfdfdeebcaec254f04fa1229d9f0267bef700595
 
 
 for epoch in range(start_epoch, start_epoch + 20):
