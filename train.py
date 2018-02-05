@@ -29,7 +29,7 @@ from logger import Logger
 from load_dataset import get_train_dataset, get_val_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
 args = parser.parse_args()
@@ -51,6 +51,8 @@ print('==> Preparing data..')
 transform_train = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
+    transforms.RandomRotation(180),
+    transforms.RandomGrayscale(p=0.1),
     transforms.ToTensor()
 ])
 
@@ -95,7 +97,9 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+#scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, verbose=True)
+
 
 # Training
 
@@ -134,7 +138,7 @@ def train(epoch):
 
 
 def val(epoch):
-    global best_acc
+    global best_loss
     global loss_list
 
     net.eval()
@@ -202,7 +206,7 @@ def val(epoch):
     acc = 100. * best_correction / total
     print('Best accuracy: ', acc, 'at threshold: ', best_threshold)
     info = {
-        'loss': loss.data[0],
+        'loss': val_loss,
         'accuracy': 100. * best_correction / total
     }
 
@@ -225,7 +229,7 @@ def val(epoch):
 
 #       for tag, images in info.items():
 #           logger.image_summary(tag, images, step+1)
-
+    scheduler.step(val_loss)
     if val_loss < best_loss:
         print('Saving..')
         state = {
@@ -236,11 +240,11 @@ def val(epoch):
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
         torch.save(state, './checkpoint/ckpt.pth.tar')
-        best_acc = acc
+        best_loss = val_loss
+    print(val_loss, ", loss of validation")
 
 
 
-for epoch in range(start_epoch, start_epoch + 20):
-    scheduler.step()
+for epoch in range(start_epoch, start_epoch + 50):
     train(epoch)
     val(epoch)

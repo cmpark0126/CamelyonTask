@@ -59,14 +59,8 @@ class Hyperparams:
     patch_size = (304, 304)
 
     # for train dataset
-<<<<<<< HEAD
-    number_of_patch_per_slide = 5000
-    ratio_of_tumor_patch = 0.2
-    threshold_of_tumor_rate = 0.4
-=======
-    number_of_patch_per_slide   = 500
+    number_of_patch_per_slide   = 5000
     ratio_of_tumor_patch        = 0.2
     threshold_of_tumor_rate     = 0.4
->>>>>>> cfdfdeebcaec254f04fa1229d9f0267bef700595
 
     # for test dataset
