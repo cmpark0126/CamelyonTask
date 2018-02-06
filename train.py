@@ -211,12 +211,9 @@ def val(epoch):
 
     for i in range(section):
         true_positive = real_tumor - false_negative[i]
-
-        precision = true_positive / (true_positive + false_positive[i])
-        recall = true_positive / (true_positive + false_negative[i])
-
-        f_score = 2 * precision * recall / (precision + recall)
-
+        precision = true_positive / (true_positive + false_positive[i] + 1e-6)
+        recall = true_positive / (true_positive + false_negative[i] + 1e-6)
+        f_score = 2 * precision * recall / (precision + recall+1e-8)
         if f_score > best_score_inside:
             best_score_inside = f_score
             best_threshold = i
@@ -225,12 +222,16 @@ def val(epoch):
 
         sensitivity.append(1 - false_negative[i] / real_tumor)
         specificity.append(1 - false_positive[i] / real_normal)
+        if i == 0:
+            auc += 0.5 * specificity[i] * (1 + sensitivity[i])
+        else:
+            auc += 0.5 * (sensitivity[i] + sensitivity[i-1]) * (specificity[i-1] - specificity[i])
 
         print('Threshold: %.5f | Acc: %.5f%%'
               % (i / divisor,
                  (total - false_negative[i] - false_positive[i]) / total))
 
-    # for save fig
+    auc += 0.5 * (1 - specificity[divisor]) * sensitivity[divisor]
     plt.plot(specificity, sensitivity)
     plt.xlabel('Specificity')
     plt.ylabel('Sensitivity')
@@ -243,6 +244,7 @@ def val(epoch):
     print('Best score: ', best_score_inside, 'at threshold: ', best_threshold / divisor)
     print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
     print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
+    print('AUC: ', auc)
     info = {
         'loss': val_loss,
         'Acc': acc,
@@ -273,8 +275,9 @@ def val(epoch):
         best_score = best_score_inside
     print(best_score, ", F-score")
 
-# Run model
-for epoch in range(start_epoch, start_epoch + 15):
+
+
+for epoch in range(start_epoch, start_epoch + 9):
     scheduler.step()
     train(epoch)
     val(epoch)
