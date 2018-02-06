@@ -13,7 +13,6 @@ import torch.utils.data as data
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
-
 class CAMELYON_DATALOADER(data.Dataset):
     """
     Args:
@@ -24,7 +23,6 @@ class CAMELYON_DATALOADER(data.Dataset):
         target_transform (callable, optional): A function/transform that takes in the
             target and transforms it.
     """
-    base_folder = 'dataset'
 
     def __init__(self, usage='train',
                  transform=None, target_transform=None):
@@ -106,7 +104,6 @@ def get_train_dataset(train_transform, test_transform,
 
 def get_val_dataset(train_transform, test_transform,
                     train_target_transform=None, test_target_transform=None):
-
     val_dataset = CAMELYON_DATALOADER(usage='val',
                                       transform=test_transform,
                                       target_transform=test_target_transform)

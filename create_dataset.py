@@ -267,13 +267,9 @@ class CAMELYON_PREPRO():
 
 
     """
-    param : slide file (openslide)
-            num_of_patch (int)
-            mask file (numpy)
-            level (integer)
-            patch_size (integer 2 tuple)
+    param :
 
-    return : set of position(list)
+    return :
     """
     def get_inform_of_random_samples(self, mask, num_of_patch):
         slide = self.slide
