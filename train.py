@@ -60,11 +60,11 @@ trainset = get_train_dataset(transform_train, transform_test)
 valset = get_val_dataset(transform_train, transform_test)
 
 trainloader = torch.utils.data.DataLoader(trainset,
-                                          hp.batch_size,
+                                          hp.batch_size_for_train,
                                           shuffle=True,
                                           num_workers=32)
 valloader = torch.utils.data.DataLoader(valset,
-                                        hp.batch_size,
+                                        hp.batch_size_for_train,
                                         shuffle=True,
                                         num_workers=32)
 
@@ -132,7 +132,7 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        thresholding = torch.ones(inputs.size(0)) * (1 - hp.threshold)
+        thresholding = torch.ones(inputs.size(0)) * (1 - hp.threshold_for_train)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
 
@@ -170,8 +170,9 @@ def val(epoch):
     sensitivity = []
     specificity = []
 
+<<<<<<< HEAD
     auc = 0
-    best_threshold = hp.threshold
+    best_threshold = hp.threshold_for_train
     best_recall = 0
     best_precision = 0
     best_score_inside = 0
@@ -209,9 +210,14 @@ def val(epoch):
                 _false_positive = torch.floor(_false_positive)
                 false_positive[i] += _false_positive.data.cpu().sum()
 
+<<<<<<< HEAD
                 _false_negative = find_error + Variable(biased.cuda())
                 _false_negative = torch.floor(_false_negative)
                 false_negative[i] += _false_negative.data.cpu().sum()
+=======
+        real_tumor += targets.data.cpu().sum()
+        real_normal += (hp.batch_size_for_train - targets.data.cpu().sum())
+>>>>>>> 75fb1bc49caed9344dcbc2921fb4cef9fc9e3884
 
     false_positive[0] = real_normal
     false_negative[divisor] = real_tumor
