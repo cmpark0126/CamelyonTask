@@ -73,23 +73,34 @@ if hp.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
+    checkpoint = torch.load('./checkpoint/ckpt_for_ansangble.pth.tar')
 
-    net = checkpoint['net']
+    net1 = checkpoint['net1']
+    net2 = checkpoint['net2']
+    net3 = checkpoint['net3']
     best_auc = checkpoint['AUC']
     start_epoch = checkpoint['epoch']
 
 else:
     print('==> Building model..')
-    # net = resnet152()
-    # net = densenet121()
-    net = inception_v3()
+    net1 = resnet152()
+    net2 = densenet121()
+    net3 = inception_v3()
 
 if use_cuda:
-    net.cuda()
+    net1.cuda()
+    net2.cuda()
+    net3.cuda()
     range_of_cuda_device = range(torch.cuda.device_count())
-    net = torch.nn.DataParallel(net,
-                                device_ids=range_of_cuda_device)
+#    net1 = torch.nn.DataParallel(net1,
+#                                device_ids=range(3))
+#    net2 = torch.nn.Dataparallel(net2,
+#                                 device_ids=range(3, 6))
+#    net3 = torch.nn.Dataparallel(net3,
+#                                 device_ids=range(6, 8))
+    net1 = torch.nn.DataParallel(net1, range_of_cuda_device)
+    net2 = torch.nn.DataParallel(net2, range_of_cuda_device)
+    net3 = torch.nn.DataParallel(net3, range_of_cuda_device)
     cudnn.benchmark = True
 
 
@@ -97,12 +108,17 @@ logger = Logger('./logs')
 
 criterion = nn.BCELoss()
 
-optimizer = optim.SGD(net.parameters(), lr=hp.learning_rate,
+optimizer = optim.SGD(net1.parameters(), lr=hp.learning_rate,
                       momentum=hp.momentum, weight_decay=hp.weight_decay)
+optimizer = optim.SGD(net2.parameters(), lr=hp.learning_rate,
+                      momentum=hp.momentum, weight_decay=hp.weight_decay)
+optimizer = optim.SGD(net3.parameters(), lr=hp.learning_rate,
+                      momentum=hp.momentum, weight_decay=hp.weight_decay)
+
 #optimizer = optim.Adam(net.parameters(), lr=hp.learning_rate)
 #optimizer = optim.RMSprop(net.parameters(), lr=hp.learning_rate, alpha=0.99)
 
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.1)
 #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
@@ -110,7 +126,9 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 def train(epoch):
     print('\nEpoch: %d' % epoch)
 
-    net.train()
+    net1.train()
+    net2.train()
+    net3.train()
 
     train_loss = 0
     correct = 0
@@ -126,7 +144,16 @@ def train(epoch):
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
 
-        outputs = net(inputs)
+        outputs1 = net1(inputs)
+        outputs2 = net2(inputs)
+        outputs3 = net3(inputs)
+
+        a = random.uniform(0, 1)
+        b = random.uniform(0, 1-a)
+        c = 1 - a - b
+
+        outputs = a * outputs1 + b * outputs2 + c * outputs3
+        
         outputs = torch.squeeze(outputs)
         loss = criterion(outputs, targets)
         loss.backward()
@@ -152,7 +179,9 @@ def val(epoch):
     global best_auc
     global loss_list
 
-    net.eval()
+    net1.eval()
+    net2.eval()
+    net3.eval()
 
     val_loss = 0
     correct = 0
@@ -185,7 +214,17 @@ def val(epoch):
 
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
 
-        outputs = net(inputs)
+        outputs1 = net1(inputs)
+        outputs2 = net2(inputs)
+        outputs3 = net3(inputs)
+        
+        a = random.uniform(0, 1)
+        b = random.uniform(0, 1-a)
+        c = 1 - a - b
+
+
+        outputs = a * outputs1 + b * outputs2 + c * outputs3
+
         outputs = torch.squeeze(outputs)
 
         loss = criterion(outputs, targets)
@@ -228,7 +267,7 @@ def val(epoch):
 
         sensitivity.append(1 - false_negative[i] / real_tumor)
         specificity.append(1 - false_positive[i] / real_normal)
-        if i !=0:
+        if i != 0:
             auc += 0.5 * (sensitivity[i] + sensitivity[i-1]) * (specificity[i] - specificity[i-1])
 
         print('Threshold: %.5f | Acc: %.5f%%, Spe: %.5f, Sen: %.5f'
@@ -261,28 +300,30 @@ def val(epoch):
         logger.scalar_summary(tag, value, epoch + 1)
 
     # (2) Log values and gradients of the parameters (histogram)
-    for tag, value in net.named_parameters():
-        tag = tag.replace('.', '/')
-        logger.histo_summary(tag, to_np(value), epoch + 1)
-        logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
+#    for tag, value in net.named_parameters():
+#        tag = tag.replace('.', '/')
+#        logger.histo_summary(tag, to_np(value), epoch + 1)
+#        logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
 
     # Save checkpoint.
     if best_auc < auc:
         print('Saving..')
         state = {
-            'net': net.module if use_cuda else net,
+            'net1': net1.module if use_cuda else net1,
+            'net2': net2.module if use_cuda else net2,
+            'net3': net3.module if use_cuda else net3,
             'AUC': auc,
             'epoch': epoch,
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.pth.tar')
+        torch.save(state, './checkpoint/ckpt_for_ansangble.pth.tar')
         best_auc = auc
     print(best_auc, ", AUC")
 
 
 
-for epoch in range(start_epoch, start_epoch + 9):
+for epoch in range(start_epoch, start_epoch + 25):
     scheduler.step()
     train(epoch)
     val(epoch)

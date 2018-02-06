@@ -32,7 +32,7 @@ def inception_v3(pretrained=True, **kwargs):
 
 class Inception3(nn.Module):
 
-    def __init__(self, num_classes=1, aux_logits=True, transform_input=False):
+    def __init__(self, num_classes=1, aux_logits=False, transform_input=False):
         super(Inception3, self).__init__()
         self.aux_logits = aux_logits
         self.transform_input = transform_input
@@ -75,59 +75,56 @@ class Inception3(nn.Module):
             x[:, 0] = x[:, 0] * (0.229 / 0.5) + (0.485 - 0.5) / 0.5
             x[:, 1] = x[:, 1] * (0.224 / 0.5) + (0.456 - 0.5) / 0.5
             x[:, 2] = x[:, 2] * (0.225 / 0.5) + (0.406 - 0.5) / 0.5
-        print(x.shape)
         # 299 x 299 x 3
         x = self.Conv2d_1a_3x3(x)
-        print(x.shape)
         # 149 x 149 x 32
         x = self.Conv2d_2a_3x3(x)
-        print(x.shape)
         # 147 x 147 x 32
         x = self.Conv2d_2b_3x3(x)
-        print(x.shape)
-       # 147 x 147 x 64
+        # 147 x 147 x 64
         x = F.max_pool2d(x, kernel_size=3, stride=2)
-        print(x.shape)# 73 x 73 x 64
+        # 73 x 73 x 64
         x = self.Conv2d_3b_1x1(x)
-        print(x.shape)# 73 x 73 x 80
+        # 73 x 73 x 80
         x = self.Conv2d_4a_3x3(x)
-        print(x.shape)# 71 x 71 x 192
+        # 71 x 71 x 192
         x = F.max_pool2d(x, kernel_size=3, stride=2)
-        print(x.shape)# 35 x 35 x 192
+        # 35 x 35 x 192
         x = self.Mixed_5b(x)
-        print(x.shape)# 35 x 35 x 256
+        # 35 x 35 x 256
         x = self.Mixed_5c(x)
-        print(x.shape)# 35 x 35 x 288
+        # 35 x 35 x 288
         x = self.Mixed_5d(x)
-        print(x.shape)# 35 x 35 x 288
+        # 35 x 35 x 288
         x = self.Mixed_6a(x)
-        print(x.shape)# 17 x 17 x 768
+        # 17 x 17 x 768
         x = self.Mixed_6b(x)
-        print(x.shape)# 17 x 17 x 768
+        # 17 x 17 x 768
         x = self.Mixed_6c(x)
-        print(x.shape)# 17 x 17 x 768
+        # 17 x 17 x 768
         x = self.Mixed_6d(x)
-        print(x.shape)# 17 x 17 x 768
+        # 17 x 17 x 768
         x = self.Mixed_6e(x)
-        print(x.shape)# 17 x 17 x 768
+        # 17 x 17 x 768
         if self.training and self.aux_logits:
             aux = self.AuxLogits(x)
         # 17 x 17 x 768
         x = self.Mixed_7a(x)
-        print(x.shape)# 8 x 8 x 1280
+        # 8 x 8 x 1280
         x = self.Mixed_7b(x)
-        print(x.shape)# 8 x 8 x 2048
+        # 8 x 8 x 2048
         x = self.Mixed_7c(x)
-        print(x.shape)# 8 x 8 x 2048
+        # 8 x 8 x 2048
         x = F.avg_pool2d(x, kernel_size=8)
-        print(x.shape)# 1 x 1 x 2048
+        # 1 x 1 x 2048
         x = F.dropout(x, training=self.training)
-        print(x.shape)# 1 x 1 x 2048
+        # 1 x 1 x 2048
         x = x.view(x.size(0), -1)
-        print(x.shape)# 2048
+        # 2048
         x = self.fullyconnected(x)
         # 1 (num_classes)
         x = self.sigmoid(x)
+        
         if self.training and self.aux_logits:
             return x, aux
         return x

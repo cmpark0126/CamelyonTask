@@ -495,7 +495,7 @@ if __name__ == "__main__":
 
     create_train_dataset(cf.list_of_slide_for_train)
     create_val_dataset(cf.list_of_slide_for_val)
-    create_test_dataset()
+#    create_test_dataset()
 
     end_time = time.time()
     print("Run time is :  ", end_time - start_time)
