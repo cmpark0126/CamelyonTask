@@ -25,6 +25,7 @@ import pylab
 from load_dataset import get_test_dataset
 from load_dataset import get_val_dataset
 
+import pdb
 import csv
 from user_define import Config as cp
 
@@ -74,6 +75,7 @@ net.eval()
 for batch_idx, (inputs, label) in enumerate(testloader):
     # print(label)
     # print(label.shape)
+    pdb.set_trace()
 
     if use_cuda:
         inputs = inputs.type(torch.cuda.FloatTensor)
