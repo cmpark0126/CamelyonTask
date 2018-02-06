@@ -63,4 +63,14 @@ class Hyperparams:
     ratio_of_tumor_patch = 0.5
     threshold_of_tumor_rate = 0.4
 
-    # for test dataset
+    # for run model
+    ## resume from checkpoint
+    resume        = False
+
+    ## for optimizer
+    learning_rate = 0.01
+    momentum      = 0.9
+    weight_decay  = 9e-4
+
+    ## for data
+    batch_size = 200
