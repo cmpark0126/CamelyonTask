@@ -58,11 +58,11 @@ trainset = get_train_dataset(transform_train, transform_test)
 valset = get_val_dataset(transform_train, transform_test)
 
 trainloader = torch.utils.data.DataLoader(trainset,
-                                          hp.batch_size,
+                                          hp.batch_size_for_train,
                                           shuffle=True,
                                           num_workers=32)
 valloader = torch.utils.data.DataLoader(valset,
-                                        hp.batch_size,
+                                        hp.batch_size_for_train,
                                         shuffle=True,
                                         num_workers=32)
 
@@ -130,7 +130,7 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        thresholding = torch.ones(inputs.size(0)) * (1 - hp.threshold)
+        thresholding = torch.ones(inputs.size(0)) * (1 - hp.threshold_for_train)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
 
@@ -169,7 +169,7 @@ def val(epoch):
     specificity = []
 
     best_score_inside = 0
-    best_threshold = hp.threshold
+    best_threshold = hp.threshold_for_train
     best_recall = 0
     best_precision = 0
 
@@ -207,7 +207,7 @@ def val(epoch):
             false_negative[i] += _false_negative.data.cpu().sum()
 
         real_tumor += targets.data.cpu().sum()
-        real_normal += (hp.batch_size - targets.data.cpu().sum())
+        real_normal += (hp.batch_size_for_train - targets.data.cpu().sum())
 
     for i in range(section):
         true_positive = real_tumor - false_negative[i]

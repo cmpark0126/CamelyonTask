@@ -60,8 +60,8 @@ class Hyperparams:
 
     # for dataset
     number_of_patch_per_slide = 7000
-    ratio_of_tumor_patch = 0.5
-    threshold_of_tumor_rate = 0.4
+    ratio_of_tumor_patch      = 0.5
+    threshold_of_tumor_rate   = 0.4
 
     # for run model
     ## resume from checkpoint
@@ -73,6 +73,10 @@ class Hyperparams:
     weight_decay  = 9e-4
 
     ## for epoch
-    batch_size = 200
     ### for train step
-    threshold = 0.2
+    batch_size_for_train = 200
+    threshold_for_train = 0.2
+
+    ### for eval step
+    batch_size_for_eval = 250
+    threshold_for_eval = 0.1
