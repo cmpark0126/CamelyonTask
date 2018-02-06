@@ -19,9 +19,9 @@ from torch.autograd import Variable
 
 import numpy as np
 import pylab
-# import matplotlib
-# matplotlib.use('agg')
-# import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
 
 from logger import Logger
 
@@ -36,8 +36,6 @@ import pdb
 use_cuda = torch.cuda.is_available()
 best_score = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-
-threshold = 0.2
 
 def to_np(x):
     return x.data.cpu().numpy()
@@ -87,8 +85,9 @@ else:
 
 if use_cuda:
     net.cuda()
+    range_of_cuda_device = range(torch.cuda.device_count())
     net = torch.nn.DataParallel(net,
-                                device_ids=range(torch.cuda.device_count()))
+                                device_ids=range_of_cuda_device)
     cudnn.benchmark = True
 
 
@@ -131,7 +130,7 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
+        thresholding = torch.ones(inputs.size(0)) * (1 - hp.threshold)
         predicted = outputs + Variable(thresholding.cuda())
         predicted = torch.floor(predicted)
 
@@ -153,22 +152,24 @@ def val(epoch):
 
     net.eval()
 
-    hubo_num = 50
     val_loss = 0
     correct = 0
     total = 0
 
+    divisor = 50
+    section = divisor + 1
+
     real_tumor = 0
     real_normal= 0
 
-    false_positive = [0] * (hubo_num + 1)
-    false_negative = [0] * (hubo_num + 1)
+    false_positive = [0] * (section)
+    false_negative = [0] * (section)
 
     sensitivity = []
     specificity = []
 
     best_score_inside = 0
-    best_threshold = 0.2
+    best_threshold = hp.threshold
     best_recall = 0
     best_precision = 0
 
@@ -188,27 +189,27 @@ def val(epoch):
         val_loss += loss.data[0]
         total += targets.size(0)
 
-        for i in range(hubo_num + 1):
-            thresholding = torch.ones(inputs.size(0)) * (1 - i / hubo_num)
+        for i in range(section):
+            thresholding = torch.ones(inputs.size(0)) * (1 - i / divisor)
 
             predicted = outputs + Variable(thresholding.cuda())
             predicted = torch.floor(predicted)
 
-            finderror = (targets - predicted) * 0.5
+            find_error = (targets - predicted) * 0.5
             biased = torch.ones(inputs.size(0)) * 0.5
 
-            fposi = finderror + Variable(biased.cuda())
-            fnega = -finderror + Variable(biased.cuda())
-            fposi = torch.floor(fposi)
-            fnega = torch.floor(fnega)
+            _false_positive = -find_error + Variable(biased.cuda())
+            _false_positive = torch.floor(_false_positive)
+            false_positive[i] += _false_positive.data.cpu().sum()
 
-            false_positive[i] += fposi.data.cpu().sum()
-            false_negative[i] += fnega.data.cpu().sum()
+            _false_negative = find_error + Variable(biased.cuda())
+            _false_negative = torch.floor(_false_negative)
+            false_negative[i] += _false_negative.data.cpu().sum()
 
         real_tumor += targets.data.cpu().sum()
         real_normal += (hp.batch_size - targets.data.cpu().sum())
 
-    for i in range(hubo_num + 1):
+    for i in range(section):
         true_positive = real_tumor - false_negative[i]
 
         precision = true_positive / (true_positive + false_positive[i])
@@ -226,10 +227,8 @@ def val(epoch):
         specificity.append(1 - false_positive[i] / real_normal)
 
         print('Threshold: %.5f | Acc: %.5f%%'
-              % (i / hubo_num,
+              % (i / divisor,
                  (total - false_negative[i] - false_positive[i]) / total))
-        # print("Threshold: ", (i / hubo_num),
-        #       ", Accuracy: ", (total - false_negative[i] - false_positive[i]) / total)
 
     # for save fig
     plt.plot(specificity, sensitivity)
@@ -239,11 +238,9 @@ def val(epoch):
     fig.savefig('ROC_curve.png')
     fig = plt.gcf().clear()
 
-
-# Save checkpoint.
-
+    #============ TensorBoard logging ============#
     acc = 100. * (1 -  (false_negative[best_threshold]+false_positive[best_threshold])/total)
-    print('Best score: ', best_score_inside, 'at threshold: ', best_threshold / hubo_num)
+    print('Best score: ', best_score_inside, 'at threshold: ', best_threshold / divisor)
     print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
     print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
     info = {
@@ -252,9 +249,7 @@ def val(epoch):
         'F_score': best_score_inside
     }
 
-    #============ TensorBoard logging ============#
     # (1) Log the scalar values
-
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch + 1)
 
@@ -264,13 +259,7 @@ def val(epoch):
         logger.histo_summary(tag, to_np(value), epoch + 1)
         logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
 
-    # (3) Log the images
-#       info = {
-#           'images': to_np(images.view(-1, 28, 28)[:10])
-#       }
-
-#       for tag, images in info.items():
-#           logger.image_summary(tag, images, step+1)
+    # Save checkpoint.
     if best_score < best_score_inside:
         print('Saving..')
         state = {
@@ -284,8 +273,7 @@ def val(epoch):
         best_score = best_score_inside
     print(best_score, ", F-score")
 
-
-
+# Run model
 for epoch in range(start_epoch, start_epoch + 15):
     scheduler.step()
     train(epoch)

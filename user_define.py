@@ -58,7 +58,7 @@ class Hyperparams:
     # for data preprocess
     patch_size = (304, 304)
 
-    # for train dataset
+    # for dataset
     number_of_patch_per_slide = 7000
     ratio_of_tumor_patch = 0.5
     threshold_of_tumor_rate = 0.4
@@ -72,5 +72,7 @@ class Hyperparams:
     momentum      = 0.9
     weight_decay  = 9e-4
 
-    ## for data
+    ## for epoch
     batch_size = 200
+    ### for train step
+    threshold = 0.2
