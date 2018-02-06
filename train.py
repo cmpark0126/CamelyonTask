@@ -29,7 +29,7 @@ from logger import Logger
 from load_dataset import get_train_dataset, get_val_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
 args = parser.parse_args()
@@ -98,7 +98,7 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
@@ -143,7 +143,7 @@ def val(epoch):
     global loss_list
 
     net.eval()
-
+    auc = 0
     hubo_num = 50
     val_loss = 0
     correct = 0
@@ -176,8 +176,8 @@ def val(epoch):
             predicted = torch.floor(predicted)
             finderror = (targets - predicted) * 0.5
             biased = torch.ones(inputs.size(0)) * 0.5
-            fposi = finderror + Variable(biased.cuda())
-            fnega = -finderror + Variable(biased.cuda())
+            fposi = -finderror + Variable(biased.cuda())
+            fnega = finderror + Variable(biased.cuda())
             fposi = torch.floor(fposi)
             fnega = torch.floor(fnega)
 
@@ -188,9 +188,9 @@ def val(epoch):
 
     for i in range(hubo_num + 1):
         true_positive = real_tumor - false_negative[i]
-        precision = true_positive / (true_positive + false_positive[i])
-        recall = true_positive / (true_positive + false_negative[i])
-        f_score = 2 * precision * recall / (precision + recall)
+        precision = true_positive / (true_positive + false_positive[i] + 1e-6)
+        recall = true_positive / (true_positive + false_negative[i] + 1e-6)
+        f_score = 2 * precision * recall / (precision + recall+1e-8)
         if f_score > best_score_inside:
             best_score_inside = f_score
             best_threshold = i
@@ -198,9 +198,15 @@ def val(epoch):
             best_precision = precision
         sensitivity.append(1 - false_negative[i] / real_tumor)
         specificity.append(1 - false_positive[i] / real_normal)
+        if i == 0:
+            auc += 0.5 * specificity[i] * (1 + sensitivity[i])
+        else:
+            auc += 0.5 * (sensitivity[i] + sensitivity[i-1]) * (specificity[i-1] - specificity[i])
+
         print("Threshold: ", i / hubo_num,
               ", Accuracy: ", (total - false_negative[i] - false_positive[i]) / total)
-
+    
+    auc += 0.5 * (1 - specificity[hubo_num]) * sensitivity[hubo_num]
     plt.plot(specificity, sensitivity)
     plt.xlabel('Specificity')
     plt.ylabel('Sensitivity')
@@ -215,6 +221,7 @@ def val(epoch):
     print('Best score: ', best_score_inside, 'at threshold: ', best_threshold / hubo_num)
     print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
     print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
+    print('AUC: ', auc)
     info = {
         'loss': val_loss,
         'Acc': acc,
@@ -255,7 +262,7 @@ def val(epoch):
 
 
 
-for epoch in range(start_epoch, start_epoch + 15):
+for epoch in range(start_epoch, start_epoch + 9):
     scheduler.step()
     train(epoch)
     val(epoch)
