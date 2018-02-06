@@ -62,7 +62,6 @@ checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
 # print(checkpoint)
 net = checkpoint['net']
 
-
 if use_cuda:
     net.cuda()
     net = torch.nn.DataParallel(

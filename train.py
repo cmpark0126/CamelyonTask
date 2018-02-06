@@ -29,7 +29,7 @@ from logger import Logger
 from load_dataset import get_train_dataset, get_val_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.0001, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
 args = parser.parse_args()
@@ -39,7 +39,7 @@ best_score = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 threshold = 0.2
-batch_size = 250
+batch_size = 200
 
 
 def to_np(x):
@@ -81,8 +81,9 @@ if args.resume:
 
 else:
     print('==> Building model..')
-    net = resnet101()
+    net = resnet152()
 #    net = densenet121()
+#    net = inception_v3()
 
 if use_cuda:
     net.cuda()
@@ -97,8 +98,8 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=0.9, weight_decay=9e-4)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 #optimizer = optim.RMSprop(net.parameters(), lr=args.lr, alpha=0.99)
-#scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+#scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
 # Training
@@ -239,7 +240,6 @@ def val(epoch):
 
 #       for tag, images in info.items():
 #           logger.image_summary(tag, images, step+1)
-    scheduler.step(best_score_inside)
     if best_score < best_score_inside:
         print('Saving..')
         state = {
@@ -255,6 +255,7 @@ def val(epoch):
 
 
 
-for epoch in range(start_epoch, start_epoch + 30):
+for epoch in range(start_epoch, start_epoch + 15):
+    scheduler.step()
     train(epoch)
     val(epoch)
