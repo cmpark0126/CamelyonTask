@@ -170,7 +170,6 @@ def val(epoch):
     sensitivity = []
     specificity = []
 
-<<<<<<< HEAD
     auc = 0
     best_threshold = hp.threshold_for_train
     best_recall = 0
@@ -210,14 +209,11 @@ def val(epoch):
                 _false_positive = torch.floor(_false_positive)
                 false_positive[i] += _false_positive.data.cpu().sum()
 
-<<<<<<< HEAD
                 _false_negative = find_error + Variable(biased.cuda())
                 _false_negative = torch.floor(_false_negative)
                 false_negative[i] += _false_negative.data.cpu().sum()
-=======
         real_tumor += targets.data.cpu().sum()
         real_normal += (hp.batch_size_for_train - targets.data.cpu().sum())
->>>>>>> 75fb1bc49caed9344dcbc2921fb4cef9fc9e3884
 
     false_positive[0] = real_normal
     false_negative[divisor] = real_tumor
