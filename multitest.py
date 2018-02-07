@@ -41,19 +41,20 @@ import pdb
 import itertools
 from operator import methodcaller
 
-#304
+# 304
 stride = 304
 slide_fn = "b_13"
 
 q = Queue()
 patch_q = Queue()
 
-
 def makecsv(output, label, size):
+    #print(output)
     for i in range(size):
         if output[i] == 1:
             print(label[i])
         wr.writerow([label[i][0], label[i][1], output[i]])
+
 
 """
 def make_patch_process(q):
@@ -101,6 +102,7 @@ def make_patch_process(q):
     pbar.close()
 """
 
+
 def make_patch_multi_process(pos_list):
     #print("in make patch")
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
@@ -108,9 +110,10 @@ def make_patch_multi_process(pos_list):
 
     pos = pos_list
 
-    if pos == (-1,-1):
+    if pos == (-1, -1):
         print("end queue")
         q.put("DONE")
+        return
 
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
     div_patch = np.array(patch)
@@ -120,7 +123,8 @@ def make_patch_multi_process(pos_list):
     patch_q.put(test_dataset)
     #print("get a patch")
 
-    #slide.close()
+    # slide.close()
+
 
 if __name__ == "__main__":
     # mp.set_start_method('spawn')
@@ -143,27 +147,26 @@ if __name__ == "__main__":
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
     # print(checkpoint)
     net = checkpoint['net']
-    #net.share_memory()
+    # net.share_memory()
 
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
-    pos = [(x*stride , y*stride) for y in range(round(slide.dimensions[1] / stride))
-                                    for x in range(round(slide.dimensions[0] / stride))]
-    pos.append((-1,-1))
+    pos = [(x * stride, y * stride) for y in range(round(slide.dimensions[1] / stride)) for x in range(round(slide.dimensions[0] / stride))]
+    pos.append((-1, -1))
 
-    #print(pos)
+    print(len(pos))
     #q = Queue()
     #p = Process(target=make_patch_process, args=(q,))
-    #p.start()
+    # p.start()
 
     #print("go to queue manager")
     #p = Process(target=q_patch_manager)
-    #p.start()
+    # p.start()
 
     print("go to map")
     pool = Pool(2)
     result = pool.map_async(make_patch_multi_process, pos)
-    #print(result.successful())
+    # print(result.successful())
 
     if use_cuda:
         net.cuda()
@@ -204,10 +207,12 @@ if __name__ == "__main__":
             outputs = torch.floor(outputs)
             outputs_cpu = outputs.data.cpu()
 
+            #print(len(outputs_cpu.shape))
             makecsv(outputs_cpu, label, inputs.size(0))
             print("\ntest loop ", idx)
             print("Patch Queue size is ", patch_q.qsize())
             idx += 1
+
         elif not q.empty():
             if q.get() == 'DONE':
                 break
