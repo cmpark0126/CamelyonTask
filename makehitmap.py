@@ -8,15 +8,19 @@ import numpy as np
 import openslide
 import cv2
 
+
+slide_fn = 'b_13'
+output_level = 4
+
 f = open(cf.path_for_generated_image + "/result.csv",
          'r', encoding='utf-8')
 
-target_path = os.path.join(cf.path_of_task_1, 'b_15.tif')
+target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
 slide = openslide.OpenSlide(target_path)
 
 print("start")
 
-a = np.zeros(shape=slide.level_dimensions[4][::-1])
+output = np.zeros(shape=slide.level_dimensions[output_level][::-1])
 
 rdr = csv.reader(f)
 for line in rdr:
@@ -24,10 +28,10 @@ for line in rdr:
     if line[2] == '1.0':
         print(line[0], line[1])
         x_pos = line[0].strip()
-        x = round(int(x_pos)/16)
+        x = round(int(x_pos)/slide.level_downsamples[output_level])
         y_pos = line[1].strip()
-        y = round(int(y_pos)/16)
-        a[y:y+19, x:x+19] = 255
+        y = round(int(y_pos)/slide.level_downsamples[output_level])
+        output[y:y+19, x:x+19] = 255
 
 
-cv2.imwrite('reult.png', a)
+cv2.imwrite(slide_fn + '_reult.png', output)
