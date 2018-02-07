@@ -125,12 +125,31 @@ def make_patch_multi_process(args):
     test_dataset[cf.key_of_data] = np.divide(div_patch, 255)
     test_dataset[cf.key_of_informs] = np.array(pos)
     patch_q.put(test_dataset)
+
+    #print(patch_q.qsize())
     #print("get a patch")
 
     # slide.close()
 
-def make_patch_multi_process_unpack(param):
-    return make_patch_multi_process(*param)
+def manage_q(patch_q, q):
+    while True:
+        if patch_q.qsize() >= hp.batch_size_for_eval:
+            print("innet")
+            test_dataset = {}
+            set_of_patch = []
+            set_of_pos = []
+            for i in range(hp.batch_size_for_eval):
+                data = patch_q.get()
+                set_of_patch.append(data[cf.key_of_data])
+                set_of_pos.append(data[cf.key_of_informs])
+
+            arr = np.array(set_of_patch)
+            tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
+
+            test_dataset[cf.key_of_data] = tset
+            test_dataset[cf.key_of_informs] = np.array(set_of_pos)
+            q.put(test_dataset)
+
 
 if __name__ == "__main__":
     # mp.set_start_method('spawn')
@@ -163,46 +182,15 @@ if __name__ == "__main__":
     q = manager.Queue()
     patch_q = manager.Queue()
 
+    p = Process(target=manage_q, args=(patch_q, q,))
+    p.start()
+
     pos= [ (x * stride, y * stride) for y in range(round(slide.dimensions[1] / stride)) for x in range(round(slide.dimensions[0] / stride))]
     pos.append((-1, -1))
 
-    #data = []
-    #for y in range(round(slide.dimensions[1] / stride)) :
-    #    for x in range(round(slide.dimensions[0] / stride)):
-    #        dic = {}
-    #        dic['data'] = (x,y)
-    #        dic['q'] = q
-    #        dic['patch_q'] = patch_q
-    #        data.append(dic)
-
-    #dic['data'].append((-1, -1))
-    #dic['q'] = [q]*len(dic['data'])
-    #dic['patch_q'] = [patch_q]*len(dic['data'])
-
-    #print(len(dic['data']))
-    #q = Queue()
-    #p = Process(target=make_patch_process, args=(q,))
-    # p.start()
-
-    #print("go to queue manager")
-    #p = Process(target=q_patch_manager)
-    # p.start()
-
     print("go to map")
-    #print(len(data))
 
-
-    #q_list = [q]*len(pos)
-    #patch_q_list= [patch_q]*len(pos)
-
-    #param = {}
-    #param['q'] = q
-    #param['patch_q'] = patch_q
-    #param['data'] = pos
-
-
-
-    pool = Pool(8)
+    pool = Pool(4)
     result = pool.map_async(make_patch_multi_process, zip(repeat(q), repeat(patch_q), pos))
     # print(result.successful())
 
@@ -216,51 +204,40 @@ if __name__ == "__main__":
     idx = 0
     print("start")
     while True:
-        if patch_q.qsize() >= batch_size:
-            print("innet")
-            test_dataset = {}
-            set_of_patch = []
-            set_of_pos = []
-            for i in range(batch_size):
-                data = patch_q.get()
-                set_of_patch.append(data[cf.key_of_data])
-                set_of_pos.append(data[cf.key_of_informs])
+        data = q.get()
+        print("in")
+        if data == 'DONE':
+            p.terminate()
+            break
 
-            arr = np.array(set_of_patch)
-            tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
-            inputs = tset
+        inputs = data[cf.key_of_data]
+        label = data[cf.key_of_informs]
 
-            label = np.array(set_of_pos)
-        # print(label)
-        # print(label.shape)
-            """
-            if use_cuda:
-                inputs = inputs.type(torch.cuda.FloatTensor)
-                inputs = inputs.cuda()
+        if use_cuda:
+            inputs = inputs.type(torch.cuda.FloatTensor)
+            inputs = inputs.cuda()
 
-            inputs = Variable(inputs, volatile=True)
-            outputs = net(inputs)
-            outputs = torch.squeeze(outputs)
-            thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
-            # print(outputs)
-            outputs = outputs + Variable(thresholding.cuda())
-            outputs = torch.floor(outputs)
-            outputs_cpu = outputs.data.cpu()
-            """
-            outputs_cpu = [0]*inputs.size(0)
+        inputs = Variable(inputs, volatile=True)
+        outputs = net(inputs)
+        outputs = torch.squeeze(outputs)
+        thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
+        # print(outputs)
+        outputs = outputs + Variable(thresholding.cuda())
+        outputs = torch.floor(outputs)
+        outputs_cpu = outputs.data.cpu()
 
-            #print(len(outputs_cpu.shape))
-            makecsv(outputs_cpu, label, inputs.size(0))
-            print("\ntest loop ", idx)
-            print("Patch Queue size is ", patch_q.qsize())
-            idx += 1
+        outputs_cpu = [0]*inputs.size(0)
 
-        elif not q.empty():
-            if q.get() == 'DONE':
-                break
+        #print(len(outputs_cpu.shape))
+        makecsv(outputs_cpu, label, inputs.size(0))
+        print("\ntest loop ", idx)
+        print("Patch Queue size is ", patch_q.qsize())
+        idx += 1
+
 
     print("test loop end")
 
+    p.join()
     result.wait()
     f.close()
     end_time = time.time()
