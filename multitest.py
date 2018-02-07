@@ -121,26 +121,6 @@ def make_patch_multi_process(pos_list):
     #print("get a patch")
 
     #slide.close()
-"""
-def q_patch_manager():
-
-    while True:
-        if patch_q.qsize() >= batch_size:
-            test_dataset = {}
-            set_of_patch = []
-            set_of_pos = []
-            for i in range(batch_size):
-                set_of_patch.append(patch_q.get()[cf.key_of_data])
-                set_of_pos.append(patch_q.get()[cf.key_of_informs])
-
-            arr = np.array(set_of_patch)
-            tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
-            test_dataset[cf.key_of_data] = tset
-            test_dataset[cf.key_of_informs] = np.array(set_of_pos)
-            manager_q.put(test_dataset)
-            #print("send queue with batch_size")
-        #print("Queue size is ", patch_q.qsize())
-"""
 
 if __name__ == "__main__":
     # mp.set_start_method('spawn')
@@ -149,8 +129,6 @@ if __name__ == "__main__":
 
     threshold = 0.1
     batch_size = 250
-    tumor_list = []
-    labeling = []
 
     f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
              'w', encoding='utf-8', newline='')
@@ -182,7 +160,7 @@ if __name__ == "__main__":
     #p = Process(target=q_patch_manager)
     #p.start()
 
-    print("go to starmap")
+    print("go to map")
     pool = Pool(2)
     result = pool.map_async(make_patch_multi_process, pos)
     #print(result.successful())
@@ -208,8 +186,8 @@ if __name__ == "__main__":
 
             arr = np.array(set_of_patch)
             tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
-
             inputs = tset
+
             label = np.array(set_of_pos)
         # print(label)
         # print(label.shape)
@@ -239,5 +217,4 @@ if __name__ == "__main__":
 result.wait()
 f.close()
 end_time = time.time()
-print("Run time is :  ", end_time - start_time)
-print("program end")
+print("Program end, Running time is :  ", end_time - start_time)
