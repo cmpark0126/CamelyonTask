@@ -38,8 +38,17 @@ import tqdm
 import time
 import pdb
 
-stride = 152
+import itertools
+from operator import methodcaller
+
+#304
+stride = 304
 slide_fn = "b_13"
+
+q = Queue()
+patch_q = Queue()
+pos_q = Queue()
+
 
 def makecsv(output, label, size):
     for i in range(size):
@@ -47,7 +56,7 @@ def makecsv(output, label, size):
             print(label[i])
         wr.writerow([label[i][0], label[i][1], output[i]])
 
-
+"""
 def make_patch_process(q):
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
@@ -91,6 +100,47 @@ def make_patch_process(q):
 
     q.put("DONE")
     pbar.close()
+"""
+
+def make_patch_multi_process(pos_list):
+    target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
+    slide = openslide.OpenSlide(target_path)
+    #print("in make patch")
+
+    pos = pos_list
+
+    if pos == (-1,-1):
+        print("end queue")
+        q.put("DONE")
+
+    patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
+    div_patch = np.array(patch)
+    patch_q.put(np.divide(div_patch, 255))
+    pos_q.put(np.array(pos))
+
+    #print("get a patch")
+
+    slide.close()
+
+def q_make_patch():
+
+    while True:
+        if patch_q.qsize() >= batch_size:
+            test_dataset = {}
+            set_of_patch = []
+            set_of_pos = []
+            for i in range(batch_size):
+                set_of_patch.append(patch_q.get())
+                set_of_pos.append(pos_q.get())
+
+            arr = np.array(set_of_patch)
+            tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
+            test_dataset[cf.key_of_data] = tset
+            test_dataset[cf.key_of_informs] = np.array(set_of_pos)
+            q.put(test_dataset)
+            #print("send queue with batch_size")
+        #print("Queue size is ", patch_q.qsize())
+
 
 
 if __name__ == "__main__":
@@ -117,9 +167,26 @@ if __name__ == "__main__":
     net = checkpoint['net']
     net.share_memory()
 
-    q = Queue()
-    p = Process(target=make_patch_process, args=(q,))
+    target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
+    slide = openslide.OpenSlide(target_path)
+    pos = [(x*stride , y*stride) for y in range(round(slide.dimensions[1] / stride))
+                                    for x in range(round(slide.dimensions[0] / stride))]
+    pos.append((-1,-1))
+    #q = Queue()
+    #p = Process(target=make_patch_process, args=(q,))
+    #p.start()
+
+    print("go to queue manager")
+    p = Process(target=q_make_patch)
     p.start()
+
+    print("go to starmap")
+    pool = Pool(1)
+    result = pool.map_async(make_patch_multi_process, pos)
+    #print(result.successful())
+
+
+
 
     if use_cuda:
         net.cuda()
@@ -133,6 +200,7 @@ if __name__ == "__main__":
         test_data = q.get()
         if(test_data == 'DONE'):
             break
+            p.terminate()
 
         inputs = test_data[cf.key_of_data]
         label = test_data[cf.key_of_informs]
@@ -153,11 +221,12 @@ if __name__ == "__main__":
 
         makecsv(outputs_cpu, label, inputs.size(0))
         print("test loop ", i)
-        print("Queue size is ", q.qsize())
+        print("Queue size is ", patch_q.qsize())
         i += 1
 
     print("test loop end")
 
+result.wait()
 p.join()
 f.close()
 
