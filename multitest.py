@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
     print("test loop end")
 
-result.wait()
-f.close()
-end_time = time.time()
-print("Program end, Running time is :  ", end_time - start_time)
+    result.wait()
+    f.close()
+    end_time = time.time()
+    print("Program end, Running time is :  ", end_time - start_time)
