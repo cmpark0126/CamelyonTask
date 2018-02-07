@@ -32,13 +32,14 @@ import csv
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
-from torch.multiprocessing import Queue, Pool, Process
+from torch.multiprocessing import Queue, Pool, Process, Manager
+from functools import partial
 
 import tqdm
 import time
 import pdb
 
-import itertools
+from itertools import repeat
 from operator import methodcaller
 
 # 304
@@ -103,12 +104,15 @@ def make_patch_process(q):
 """
 
 
-def make_patch_multi_process(pos_list):
+def make_patch_multi_process(args):
     #print("in make patch")
+    #print("in function")
+    q, patch_q, pos = args
+
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
 
-    pos = pos_list
+    #pos = pos_list
 
     if pos == (-1, -1):
         print("end queue")
@@ -125,6 +129,8 @@ def make_patch_multi_process(pos_list):
 
     # slide.close()
 
+def make_patch_multi_process_unpack(param):
+    return make_patch_multi_process(*param)
 
 if __name__ == "__main__":
     # mp.set_start_method('spawn')
@@ -151,10 +157,29 @@ if __name__ == "__main__":
 
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
-    pos = [(x * stride, y * stride) for y in range(round(slide.dimensions[1] / stride)) for x in range(round(slide.dimensions[0] / stride))]
+
+    manager = Manager()
+
+    q = manager.Queue()
+    patch_q = manager.Queue()
+
+    pos= [ (x * stride, y * stride) for y in range(round(slide.dimensions[1] / stride)) for x in range(round(slide.dimensions[0] / stride))]
     pos.append((-1, -1))
 
-    print(len(pos))
+    #data = []
+    #for y in range(round(slide.dimensions[1] / stride)) :
+    #    for x in range(round(slide.dimensions[0] / stride)):
+    #        dic = {}
+    #        dic['data'] = (x,y)
+    #        dic['q'] = q
+    #        dic['patch_q'] = patch_q
+    #        data.append(dic)
+
+    #dic['data'].append((-1, -1))
+    #dic['q'] = [q]*len(dic['data'])
+    #dic['patch_q'] = [patch_q]*len(dic['data'])
+
+    #print(len(dic['data']))
     #q = Queue()
     #p = Process(target=make_patch_process, args=(q,))
     # p.start()
@@ -164,8 +189,21 @@ if __name__ == "__main__":
     # p.start()
 
     print("go to map")
-    pool = Pool(2)
-    result = pool.map_async(make_patch_multi_process, pos)
+    #print(len(data))
+
+
+    #q_list = [q]*len(pos)
+    #patch_q_list= [patch_q]*len(pos)
+
+    #param = {}
+    #param['q'] = q
+    #param['patch_q'] = patch_q
+    #param['data'] = pos
+
+
+
+    pool = Pool(8)
+    result = pool.map_async(make_patch_multi_process, zip(repeat(q), repeat(patch_q), pos))
     # print(result.successful())
 
     if use_cuda:
@@ -179,6 +217,7 @@ if __name__ == "__main__":
     print("start")
     while True:
         if patch_q.qsize() >= batch_size:
+            print("innet")
             test_dataset = {}
             set_of_patch = []
             set_of_pos = []
@@ -194,6 +233,7 @@ if __name__ == "__main__":
             label = np.array(set_of_pos)
         # print(label)
         # print(label.shape)
+            """
             if use_cuda:
                 inputs = inputs.type(torch.cuda.FloatTensor)
                 inputs = inputs.cuda()
@@ -206,6 +246,8 @@ if __name__ == "__main__":
             outputs = outputs + Variable(thresholding.cuda())
             outputs = torch.floor(outputs)
             outputs_cpu = outputs.data.cpu()
+            """
+            outputs_cpu = [0]*inputs.size(0)
 
             #print(len(outputs_cpu.shape))
             makecsv(outputs_cpu, label, inputs.size(0))
