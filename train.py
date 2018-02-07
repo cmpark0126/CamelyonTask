@@ -192,8 +192,6 @@ def val(epoch):
         val_loss += loss.data[0]
         total += targets.size(0)
         
-        real_tumor += targets.data.cpu().sum()
-        real_normal += (inputs.size(0) - targets.data.cpu().sum())
 
         for i in range(section):
             if i!=0 and i!=divisor:
