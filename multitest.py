@@ -47,7 +47,6 @@ slide_fn = "b_13"
 
 q = Queue()
 patch_q = Queue()
-pos_q = Queue()
 
 
 def makecsv(output, label, size):
@@ -103,9 +102,9 @@ def make_patch_process(q):
 """
 
 def make_patch_multi_process(pos_list):
+    #print("in make patch")
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
-    #print("in make patch")
 
     pos = pos_list
 
@@ -115,14 +114,15 @@ def make_patch_multi_process(pos_list):
 
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
     div_patch = np.array(patch)
-    patch_q.put(np.divide(div_patch, 255))
-    pos_q.put(np.array(pos))
-
+    test_dataset = {}
+    test_dataset[cf.key_of_data] = np.divide(div_patch, 255)
+    test_dataset[cf.key_of_informs] = np.array(pos)
+    patch_q.put(test_dataset)
     #print("get a patch")
 
-    slide.close()
-
-def q_make_patch():
+    #slide.close()
+"""
+def q_patch_manager():
 
     while True:
         if patch_q.qsize() >= batch_size:
@@ -130,21 +130,21 @@ def q_make_patch():
             set_of_patch = []
             set_of_pos = []
             for i in range(batch_size):
-                set_of_patch.append(patch_q.get())
-                set_of_pos.append(pos_q.get())
+                set_of_patch.append(patch_q.get()[cf.key_of_data])
+                set_of_pos.append(patch_q.get()[cf.key_of_informs])
 
             arr = np.array(set_of_patch)
             tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
             test_dataset[cf.key_of_data] = tset
             test_dataset[cf.key_of_informs] = np.array(set_of_pos)
-            q.put(test_dataset)
+            manager_q.put(test_dataset)
             #print("send queue with batch_size")
         #print("Queue size is ", patch_q.qsize())
-
-
+"""
 
 if __name__ == "__main__":
     # mp.set_start_method('spawn')
+    start_time = time.time()
     use_cuda = torch.cuda.is_available()
 
     threshold = 0.1
@@ -165,28 +165,27 @@ if __name__ == "__main__":
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
     # print(checkpoint)
     net = checkpoint['net']
-    net.share_memory()
+    #net.share_memory()
 
     target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
     pos = [(x*stride , y*stride) for y in range(round(slide.dimensions[1] / stride))
                                     for x in range(round(slide.dimensions[0] / stride))]
     pos.append((-1,-1))
+
+    #print(pos)
     #q = Queue()
     #p = Process(target=make_patch_process, args=(q,))
     #p.start()
 
-    print("go to queue manager")
-    p = Process(target=q_make_patch)
-    p.start()
+    #print("go to queue manager")
+    #p = Process(target=q_patch_manager)
+    #p.start()
 
     print("go to starmap")
-    pool = Pool(1)
+    pool = Pool(2)
     result = pool.map_async(make_patch_multi_process, pos)
     #print(result.successful())
-
-
-
 
     if use_cuda:
         net.cuda()
@@ -195,39 +194,50 @@ if __name__ == "__main__":
         #cudnn.benchmark = True
 
     net.eval()
-    i = 0
+    idx = 0
+    print("start")
     while True:
-        test_data = q.get()
-        if(test_data == 'DONE'):
-            break
-            p.terminate()
+        if patch_q.qsize() >= batch_size:
+            test_dataset = {}
+            set_of_patch = []
+            set_of_pos = []
+            for i in range(batch_size):
+                data = patch_q.get()
+                set_of_patch.append(data[cf.key_of_data])
+                set_of_pos.append(data[cf.key_of_informs])
 
-        inputs = test_data[cf.key_of_data]
-        label = test_data[cf.key_of_informs]
+            arr = np.array(set_of_patch)
+            tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
+
+            inputs = tset
+            label = np.array(set_of_pos)
         # print(label)
         # print(label.shape)
+            if use_cuda:
+                inputs = inputs.type(torch.cuda.FloatTensor)
+                inputs = inputs.cuda()
 
-        if use_cuda:
-            inputs = inputs.type(torch.cuda.FloatTensor)
-            inputs = inputs.cuda()
-        inputs = Variable(inputs, volatile=True)
-        outputs = net(inputs)
-        outputs = torch.squeeze(outputs)
-        thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
-        # print(outputs)
-        outputs = outputs + Variable(thresholding.cuda())
-        outputs = torch.floor(outputs)
-        outputs_cpu = outputs.data.cpu()
+            inputs = Variable(inputs, volatile=True)
+            outputs = net(inputs)
+            outputs = torch.squeeze(outputs)
+            thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
+            # print(outputs)
+            outputs = outputs + Variable(thresholding.cuda())
+            outputs = torch.floor(outputs)
+            outputs_cpu = outputs.data.cpu()
 
-        makecsv(outputs_cpu, label, inputs.size(0))
-        print("test loop ", i)
-        print("Queue size is ", patch_q.qsize())
-        i += 1
+            makecsv(outputs_cpu, label, inputs.size(0))
+            print("\ntest loop ", idx)
+            print("Patch Queue size is ", patch_q.qsize())
+            idx += 1
+        elif not q.empty():
+            if q.get() == 'DONE':
+                break
 
     print("test loop end")
 
 result.wait()
-p.join()
 f.close()
-
+end_time = time.time()
+print("Run time is :  ", end_time - start_time)
 print("program end")
