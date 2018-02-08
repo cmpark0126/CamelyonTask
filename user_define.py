@@ -55,7 +55,7 @@ class Config:
 
     # for determine is background
     ratio_of_tissue_area = 0.5
-    stride_for_heatmap = 152
+    stride_for_heatmap = 304
 
 
 class Hyperparams:
@@ -64,22 +64,22 @@ class Hyperparams:
     patch_size = (304, 304)
 
     # for dataset
-    number_of_patch_per_slide = 10
-    ratio_of_tumor_patch      = 0.4
+    number_of_patch_per_slide = 7000
+    ratio_of_tumor_patch      = 0.5
     threshold_of_tumor_rate   = 0.4
 
     # for run model
     ## resume from checkpoint
-    resume        = True
+    resume        = False
 
     ## for optimizer
-    learning_rate = 0.0001
+    learning_rate = 0.01
     momentum      = 0.9
     weight_decay  = 9e-4
 
     ## for epoch
     ### for train step
-    batch_size_for_train = 250
+    batch_size_for_train = 200
     threshold_for_train = 0.2
 
     ### for eval step

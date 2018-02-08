@@ -24,6 +24,7 @@ import pylab
 
 from load_dataset import get_test_dataset
 from load_dataset import get_val_dataset
+from custom_dataset import *
 
 import pdb
 import csv
@@ -38,11 +39,11 @@ print('==> Preparing data..')
 transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
-testset = get_test_dataset(transform_test, transform_test)
+testset = get_custom_dataset(transform_test)
 testloader = torch.utils.data.DataLoader(testset,
                                          hp.batch_size_for_eval,
                                          shuffle=False,
-                                         num_workers=16)
+                                         num_workers=8)
 
 print('==> Resuming from checkpoint..')
 checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
@@ -56,7 +57,9 @@ if use_cuda:
 
 def makecsv(file_writer, output, label, size):
     for i in range(size):
-        file_writer.writerow([label[i], output[i]])
+        if output[i] == 1:
+            print(label[i])
+        file_writer.writerow([label[i][0], label[i][1], output[i]])
 
 def eval_for_task1():
     net.eval()
@@ -80,8 +83,13 @@ def eval_for_task1():
 
         makecsv(fw, outputs_cpu, label, inputs.size(0))
 
+        print("\r loop is %d" %batch_idx)
+
     fo.close()
 
+start_time = time.time()
 eval_for_task1()
+end_time = time.time()
+print("Program end, Running time is :  ", end_time - start_time)
 
 print("end")
