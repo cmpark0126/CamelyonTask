@@ -102,7 +102,7 @@ optimizer = optim.SGD(net.parameters(), lr=hp.learning_rate,
 #optimizer = optim.Adam(net.parameters(), lr=hp.learning_rate)
 #optimizer = optim.RMSprop(net.parameters(), lr=hp.learning_rate, alpha=0.99)
 
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
@@ -259,13 +259,13 @@ def val(epoch):
     # (1) Log the scalar values
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch + 1)
-
+    
     # (2) Log values and gradients of the parameters (histogram)
     for tag, value in net.named_parameters():
         tag = tag.replace('.', '/')
         logger.histo_summary(tag, to_np(value), epoch + 1)
         logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
-
+    
     # Save checkpoint.
     if best_auc < auc:
         print('Saving..')
@@ -282,7 +282,7 @@ def val(epoch):
 
 
 
-for epoch in range(start_epoch, start_epoch + 9):
+for epoch in range(start_epoch, start_epoch + 60):
     scheduler.step()
     train(epoch)
     val(epoch)
