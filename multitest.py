@@ -61,7 +61,7 @@ def make_patch_multi_process(args):
     #print("in function")
     manager_q, patch_q, pos = args
 
-    slide_fn = 't_1'
+    slide_fn = 't_4'
 
     target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
@@ -105,9 +105,9 @@ def _run(manager_q, patch_q, net, pos_len):
 
     if use_cuda:
         net.cuda()
-        net = torch.nn.DataParallel(
-        net, device_ids=range(torch.cuda.device_count()))
-        cudnn.benchmark = True
+        #net = torch.nn.DataParallel(
+        #net, device_ids=range(torch.cuda.device_count()))
+        #cudnn.benchmark = True
 
     net.eval()
     idx = 0
@@ -148,13 +148,14 @@ def _run(manager_q, patch_q, net, pos_len):
 
 
 if __name__ == "__main__":
-    slide_fn = "t_1"
+    slide_fn = "t_4"
     num_of_poecess = 3
 
     start_time = time.time()
     use_cuda = torch.cuda.is_available()
     #threshold = 0.1
     #batch_size = 200
+
     f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
              'w', encoding='utf-8', newline='')
     wr = csv.writer(f)
