@@ -36,7 +36,7 @@ class CAMELYON_PREPRO():
     # hyper parameters
     patch_size = hp.patch_size
     num_of_patch = hp.number_of_patch_per_slide
-    ratio_of_tumor_patch = hp.ratio_of_tumor_patch
+    ratio_of_tumor_patch = 1
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
     def __init__(self, usage, slide_filename):
@@ -48,6 +48,8 @@ class CAMELYON_PREPRO():
             self.downsamples = int(self.slide.level_downsamples[self.level])
 
             xml_filename = slide_filename + ".xml"
+            predict_filename = slide_filename + "_reult.png"
+
             target_xml_path = os.path.join(cf.path_of_annotation,
                                            xml_filename)
             self.annotation = self.get_annotation_from_xml(target_xml_path)
@@ -69,24 +71,13 @@ class CAMELYON_PREPRO():
 
             num_of_patch_in_tumor = int(self.num_of_patch * self.ratio_of_tumor_patch)
             num_of_patch_in_tissue = self.num_of_patch - num_of_patch_in_tumor
-
-            if usage == 'train':
-                dila_of_tumor, ero_of_tumor = self.get_dilaero(self.tumor_mask)
-                dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)
-                set_of_inform_in_tumor = self.get_inform_of_random_samples(
-                                            ero_of_tumor,
-                                            num_of_patch_in_tumor)
-                set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                            dila_of_tissue - dila_of_tumor,
-                                            num_of_patch_in_tissue)
-            else:
-                dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)
-                set_of_inform_in_tumor = self.get_inform_of_random_samples(
-                                            self.tumor_mask,
-                                            num_of_patch_in_tumor)
-                set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                            dila_of_tissue - self.tumor_mask,
-                                            num_of_patch_in_tissue)
+            predict_array = cv2.imread(predict_filename, 0)
+            set_of_inform_in_tumor = self.get_inform_of_random_samples(
+                                        (predict_array - self.tumor_mask),
+                                        num_of_patch_in_tumor)
+            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                        self.tissue_mask,
+                                        num_of_patch_in_tissue)
 
             self.set_of_inform = set_of_inform_in_tumor + set_of_inform_in_tissue
             self.set_of_inform = np.array(self.set_of_inform)
@@ -373,7 +364,7 @@ class CAMELYON_PREPRO():
 
         self.check_path(fp)
 
-        fn = os.path.join(fp, slide_filename + ".pkl")
+        fn = os.path.join(fp, slide_filename + "_wrong.pkl")
         fo = open(fn, 'wb')
         pickle.dump(dataset, fo, pickle.HIGHEST_PROTOCOL)
         fo.close()
@@ -494,7 +485,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     create_train_dataset(cf.list_of_slide_for_train)
-#    create_val_dataset(cf.list_of_slide_for_val)
+    create_val_dataset(cf.list_of_slide_for_val)
 #    create_test_dataset()
 
     end_time = time.time()

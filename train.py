@@ -158,7 +158,7 @@ def val(epoch):
     correct = 0
     total = 0
 
-    divisor = 50
+    divisor = 200
     section = divisor + 1
 
     real_tumor = 0
@@ -192,8 +192,6 @@ def val(epoch):
         val_loss += loss.data[0]
         total += targets.size(0)
         
-        real_tumor += targets.data.cpu().sum()
-        real_normal += (inputs.size(0) - targets.data.cpu().sum())
 
         for i in range(section):
             if i!=0 and i!=divisor:
@@ -250,24 +248,22 @@ def val(epoch):
     print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
     print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
     print('AUC: ', auc)
-    print('FN: ', false_negative[divisor], ', FP: ', false_positive[divisor], ', RP: ', real_tumor, ', RN: ', real_normal)
+    print('FN: ', false_negative[best_threshold], ', FP: ', false_positive[best_threshold], ', RP: ', real_tumor, ', RN: ', real_normal)
     info = {
         'loss': val_loss,
         'Acc': acc,
         'F_score': best_score_inside,
         'AUC': auc
     }
-
     # (1) Log the scalar values
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch + 1)
-
+    
     # (2) Log values and gradients of the parameters (histogram)
     for tag, value in net.named_parameters():
         tag = tag.replace('.', '/')
         logger.histo_summary(tag, to_np(value), epoch + 1)
         logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
-
     # Save checkpoint.
     if best_auc < auc:
         print('Saving..')
@@ -282,9 +278,7 @@ def val(epoch):
         best_auc = auc
     print(best_auc, ", AUC")
 
-
-
-for epoch in range(start_epoch, start_epoch + 9):
-    scheduler.step()
+for epoch in range(start_epoch, start_epoch + 40):
+#    scheduler.step()
     train(epoch)
     val(epoch)
