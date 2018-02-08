@@ -76,7 +76,7 @@ if hp.resume:
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
 
     net = checkpoint['net']
-    best_auc = checkpoint['AUC']
+    best_auc = 0#checkpoint['AUC']
     start_epoch = checkpoint['epoch']
 
 else:
@@ -102,7 +102,7 @@ optimizer = optim.SGD(net.parameters(), lr=hp.learning_rate,
 #optimizer = optim.Adam(net.parameters(), lr=hp.learning_rate)
 #optimizer = optim.RMSprop(net.parameters(), lr=hp.learning_rate, alpha=0.99)
 
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
@@ -248,14 +248,14 @@ def val(epoch):
     print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
     print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
     print('AUC: ', auc)
-    print('FN: ', false_negative[divisor], ', FP: ', false_positive[divisor], ', RP: ', real_tumor, ', RN: ', real_normal)
+    print('FN: ', false_negative[best_threshold], ', FP: ', false_positive[best_threshold], ', RP: ', real_tumor, ', RN: ', real_normal)
+    """
     info = {
         'loss': val_loss,
         'Acc': acc,
         'F_score': best_score_inside,
         'AUC': auc
     }
-
     # (1) Log the scalar values
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch + 1)
@@ -265,8 +265,8 @@ def val(epoch):
         tag = tag.replace('.', '/')
         logger.histo_summary(tag, to_np(value), epoch + 1)
         logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
-    
     # Save checkpoint.
+    """
     if best_auc < auc:
         print('Saving..')
         state = {
@@ -280,9 +280,7 @@ def val(epoch):
         best_auc = auc
     print(best_auc, ", AUC")
 
-
-
-for epoch in range(start_epoch, start_epoch + 60):
-    scheduler.step()
-    train(epoch)
+for epoch in range(start_epoch, start_epoch + 1):
+#    scheduler.step()
+#    train(epoch)
     val(epoch)

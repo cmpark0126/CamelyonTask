@@ -36,7 +36,7 @@ class CAMELYON_PREPRO():
     # hyper parameters
     patch_size = hp.patch_size
     num_of_patch = hp.number_of_patch_per_slide
-    ratio_of_tumor_patch = hp.ratio_of_tumor_patch
+    ratio_of_tumor_patch = 1
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
     def __init__(self, usage, slide_filename):
@@ -72,21 +72,12 @@ class CAMELYON_PREPRO():
             num_of_patch_in_tumor = int(self.num_of_patch * self.ratio_of_tumor_patch)
             num_of_patch_in_tissue = self.num_of_patch - num_of_patch_in_tumor
             predict_array = cv2.imread(predict_filename, 0)
-            if usage == 'train':
-                set_of_inform_in_tumor = self.get_inform_of_random_samples(
-                                            predict_array - self.tumor_mask,
-                                            num_of_patch_in_tumor)
-                set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                            self.tissue_mask,
-                                            num_of_patch_in_tissue)
-            else:
-                dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)
-                set_of_inform_in_tumor = self.get_inform_of_random_samples(
-                                            self.tumor_mask,
-                                            num_of_patch_in_tumor)
-                set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                            dila_of_tissue - self.tumor_mask,
-                                            num_of_patch_in_tissue)
+            set_of_inform_in_tumor = self.get_inform_of_random_samples(
+                                        (predict_array - self.tumor_mask),
+                                        num_of_patch_in_tumor)
+            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                        self.tissue_mask,
+                                        num_of_patch_in_tissue)
 
             self.set_of_inform = set_of_inform_in_tumor + set_of_inform_in_tissue
             self.set_of_inform = np.array(self.set_of_inform)
@@ -494,7 +485,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     create_train_dataset(cf.list_of_slide_for_train)
-#    create_val_dataset(cf.list_of_slide_for_val)
+    create_val_dataset(cf.list_of_slide_for_val)
 #    create_test_dataset()
 
     end_time = time.time()
