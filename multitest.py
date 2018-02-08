@@ -190,20 +190,6 @@ if __name__ == "__main__":
 
     print("go to map")
 
-<<<<<<< HEAD
-=======
-
-    #q_list = [q]*len(pos)
-    #patch_q_list= [patch_q]*len(pos)
-
-    #param = {}
-    #param['q'] = q
-    #param['patch_q'] = patch_q
-    #param['data'] = pos
-
-
-
->>>>>>> ba0a0a61f77fca6f5a4f6abf60005ff6c1fe8fc2
     pool = Pool(4)
     result = pool.map_async(make_patch_multi_process, zip(repeat(q), repeat(patch_q), pos))
     # print(result.successful())
@@ -247,42 +233,6 @@ if __name__ == "__main__":
         print("\ntest loop ", idx)
         print("Patch Queue size is ", patch_q.qsize())
         idx += 1
-
-<<<<<<< HEAD
-=======
-            arr = np.array(set_of_patch)
-            tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
-            inputs = tset
-
-            label = np.array(set_of_pos)
-        # print(label)
-        # print(label.shape)
-            
-            if use_cuda:
-                inputs = inputs.type(torch.cuda.FloatTensor)
-                inputs = inputs.cuda()
-
-            inputs = Variable(inputs, volatile=True)
-            outputs = net(inputs)
-            outputs = torch.squeeze(outputs)
-            thresholding = torch.ones(inputs.size(0)) * (1 - threshold)
-            # print(outputs)
-            outputs = outputs + Variable(thresholding.cuda())
-            outputs = torch.floor(outputs)
-            outputs_cpu = outputs.data.cpu()
-            
-            #outputs_cpu = [0]*inputs.size(0)
-
-            #print(len(outputs_cpu.shape))
-            #makecsv(outputs_cpu, label, inputs.size(0))
-            print("\ntest loop ", idx)
-            print("Patch Queue size is ", patch_q.qsize())
-            idx += 1
-
-        elif not q.empty():
-            if q.get() == 'DONE':
-                break
->>>>>>> ba0a0a61f77fca6f5a4f6abf60005ff6c1fe8fc2
 
     print("test loop end")
 
