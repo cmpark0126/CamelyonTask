@@ -216,6 +216,7 @@ if __name__ == "__main__":
     idx = 0
 
     print("start")
+
     while True:
         if q.empty() and patch_q.qsize() < hp.batch_size_for_eval:
             p.terminate()
@@ -248,6 +249,7 @@ if __name__ == "__main__":
         print("Patch Queue size is ", patch_q.qsize())
         print("Queue size is ", q.qsize())
         idx += 1
+
 
     print("test loop end")
 
