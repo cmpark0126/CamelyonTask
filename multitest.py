@@ -44,12 +44,9 @@ from operator import methodcaller
 
 import cv2
 
-# 304
-stride = 304
-slide_fn = "b_13"
+from create_pos_for_test2 import *
 
-#q = Queue()
-#patch_q = Queue()
+# 304
 
 def makecsv(output, label, size):
     #print(output)
@@ -58,22 +55,11 @@ def makecsv(output, label, size):
             print(label[i])
         wr.writerow([label[i][0], label[i][1], output[i]])
 
-def determine_is_background(patch):
-    result_of_sum = np.sum(patch)
-
-    # print(result_of_sum)
-
-    if result_of_sum == 0:
-        return True
-    elif result_of_sum == 304 * 304:
-        return True
-    else:
-        return False
 
 def make_patch_multi_process(args):
     #print("in make patch")
     #print("in function")
-    q, patch_q, pos = args
+    manager_q, patch_q, pos = args
 
     target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
@@ -81,9 +67,6 @@ def make_patch_multi_process(args):
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
     _div_patch = np.array(patch)
     div_patch = np.divide(_div_patch, 255)
-
-    #if not determine_is_background(div_patch):
-    #    return True
 
     test_dataset = {}
     test_dataset[cf.key_of_data] = div_patch
@@ -114,92 +97,8 @@ def manage_q(patch_q, q):
             test_dataset[cf.key_of_informs] = np.array(set_of_pos)
             q.put(test_dataset)
 
-def _get_interest_region(slide, level, o_knl=5, c_knl=9):
-    col, row = slide.level_dimensions[level]
-
-    ori_img = np.array(slide.read_region((0, 0), level, (col, row)))
-    img = cv2.cvtColor(ori_img, cv2.COLOR_RGBA2RGB)
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    img = img[:,:,1]
-
-    ret, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
-    close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
-
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, open_knl)
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_knl)
-
-    _ , contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    xmax = 0
-    ymax = 0
-    xmin = sys.maxsize
-    ymin = sys.maxsize
-
-    print("in makeRECT")
-    for i in contours:
-        x,y,w,h = cv2.boundingRect(i)
-        if(x > xmax):
-            xmax = x
-        elif(x < xmin):
-            xmin = x
-
-        if(y > ymax):
-            ymax = y
-        elif(y < ymin):
-            ymin = y
-
-    downsamples = int(slide.level_downsamples[level])
-
-    return (xmin * downsamples, ymin * downsamples, xmax * downsamples, ymax * downsamples)
-
-if __name__ == "__main__":
-    # mp.set_start_method('spawn')
-    start_time = time.time()
-    use_cuda = torch.cuda.is_available()
-
-    threshold = 0.1
-    #batch_size = 200
-
-    f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
-             'w', encoding='utf-8', newline='')
-    wr = csv.writer(f)
-
-    print('==> Preparing data..')
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-    ])
-
-    print('==>Resuming from checkpoint..')
-    checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
-    # print(checkpoint)
-    net = checkpoint['net']
-    # net.share_memory()
-    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
-    slide = openslide.OpenSlide(target_path)
-
-    manager = Manager()
-
-    q = manager.Queue()
-    patch_q = manager.Queue()
-
-    p = Process(target=manage_q, args=(patch_q, q,))
-    p.start()
-
-    p2 = Process(target=manage_q, args=(patch_q, q,))
-    p2.start()
-
-    x_min, y_min, x_max, y_max = _get_interest_region(slide, cf.level_for_preprocessing)
-
-    pos = [(x , y) for x in range(x_min, x_max, stride) for y in range(y_min, y_max, stride)]
-
+def _run(manager_q, patch_q, net, pos_len):
     #pos.append((-1, -1))
-
-    print("go to map")
-
-    pool = Pool(8)
-    result = pool.map_async(make_patch_multi_process, zip(repeat(q), repeat(patch_q), pos))
     # print(result.successful())
 
     if use_cuda:
@@ -208,23 +107,16 @@ if __name__ == "__main__":
         net, device_ids=range(torch.cuda.device_count()))
         cudnn.benchmark = True
 
-    while True :
-        if q.qsize() > 0:
-            break
-
     net.eval()
     idx = 0
-
-    print("start")
+    threshold = hp.threshold_for_eval
 
     while True:
-        if q.empty() and patch_q.qsize() < hp.batch_size_for_eval:
-            p.terminate()
-            p2.terminate()
-            print("end loop")
+        if idx >= pos_len/hp.batch_size_for_eval:
+            print("get out loop")
             break
 
-        data = q.get()
+        data = manager_q.get()
         print("in")
 
         inputs = data[cf.key_of_data]
@@ -247,15 +139,74 @@ if __name__ == "__main__":
         makecsv(outputs_cpu, label, inputs.size(0))
         print("\ntest loop ", idx)
         print("Patch Queue size is ", patch_q.qsize())
-        print("Queue size is ", q.qsize())
+        print("Queue size is ", manager_q.qsize())
         idx += 1
-
 
     print("test loop end")
 
+
+if __name__ == "__main__":
+    slide_fn = "b_11"
+    num_of_poecess = 3
+
+    start_time = time.time()
+    use_cuda = torch.cuda.is_available()
+    #threshold = 0.1
+    #batch_size = 200
+    f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
+             'w', encoding='utf-8', newline='')
+    wr = csv.writer(f)
+
+    print('==>Resuming from checkpoint..')
+    checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
+    net = checkpoint['net']
+    # net.share_memory()
+    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
+    slide = openslide.OpenSlide(target_path)
+    level = cf.level_for_preprocessing
+    downsamples = int(slide.level_downsamples[level])
+
+
+    tissue_mask = create_tissue_mask(slide)
+
+    x_min, y_min, x_max, y_max = get_interest_region(tissue_mask)
+
+    stride = cf.stride_for_heatmap
+    stride_rescale = int(stride / downsamples)
+
+    set_of_pos = [(x , y) for x in range(x_min, x_max, stride_rescale) for y in range(y_min, y_max, stride_rescale)]
+
+    set_of_real_pos = get_pos_of_patch_for_eval(tissue_mask, set_of_pos)
+
+    set_of_real_pos = np.array(set_of_real_pos)
+
+    col, row = slide.level_dimensions[level]
+    thumbnail = slide.get_thumbnail((col, row))
+    thumbnail = np.array(thumbnail)
+
+    cv2.imwrite("thumbnail.jpg", thumbnail)
+
+    draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples, slide_fn)
+
+    manager = Manager()
+    manager_q = manager.Queue()
+    patch_q = manager.Queue()
+
+    p = Process(target=manage_q, args=(patch_q, manager_q,))
+    p.start()
+#    p2 = Process(target=manage_q, args=(patch_q, q,))
+#    p2.start()
+
+    pool = Pool(num_of_poecess)
+    result = pool.map_async(make_patch_multi_process, zip(repeat(manager_q), repeat(patch_q), set_of_real_pos))
+
+    _run(manager_q, patch_q, net, len(set_of_real_pos))
+
     p.join()
-    p2.join()
+    p.terminate()
+#    p2.join()
     result.wait()
     f.close()
+
     end_time = time.time()
     print("Program end, Running time is :  ", end_time - start_time)

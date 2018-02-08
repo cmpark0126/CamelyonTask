@@ -132,7 +132,7 @@ def determine_is_background(patch):
         return True
 
 
-def draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples):
+def draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples, slide_fn):
     for pos in set_of_real_pos:
         x, y = pos
         min_x = int(x/downsamples)
@@ -145,8 +145,8 @@ def draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples):
                       (max_x, max_y),
                       (255, 0, 0),
                       4)
-
-    cv2.imwrite("patch_pos_to_thumbnail.jpg", thumbnail)
+    target_path = os.path.join(cf.path_for_generated_image, "patch_pos_to_thumbnail_" + slide_fn + ".jpg")
+    cv2.imwrite(target_path, thumbnail)
 
 
 if __name__ == "__main__":
