@@ -114,10 +114,10 @@ def make_patch_multi_process(args):
 
     #pos = pos_list
 
-    if pos == (-1, -1):
-        print("end queue")
-        q.put("DONE")
-        return
+    #if pos == (-1, -1):
+    #    print("end queue")
+    #    q.put("DONE")
+    #    return
 
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
     div_patch = np.array(patch)
@@ -129,7 +129,7 @@ def make_patch_multi_process(args):
     #print(patch_q.qsize())
     #print("get a patch")
 
-    # slide.close()
+    slide.close()
 
 def manage_q(patch_q, q):
     while True:
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     p.start()
 
     pos= [ (x * stride, y * stride) for y in range(round(slide.dimensions[1] / stride)) for x in range(round(slide.dimensions[0] / stride))]
-    pos.append((-1, -1))
+    #pos.append((-1, -1))
 
     print("go to map")
 
@@ -200,15 +200,22 @@ if __name__ == "__main__":
         net, device_ids=range(torch.cuda.device_count()))
         cudnn.benchmark = True
 
+    while True :
+        if q.qsize() > 0:
+            break
+
     net.eval()
     idx = 0
+
     print("start")
     while True:
+        if q.empty():
+            p.terminate()
+            print("end loop")
+            break
+
         data = q.get()
         print("in")
-        if data == 'DONE':
-            p.terminate()
-            break
 
         inputs = data[cf.key_of_data]
         label = data[cf.key_of_informs]
@@ -227,7 +234,6 @@ if __name__ == "__main__":
         outputs_cpu = outputs.data.cpu()
 
         outputs_cpu = [0]*inputs.size(0)
-
         #print(len(outputs_cpu.shape))
         makecsv(outputs_cpu, label, inputs.size(0))
         print("\ntest loop ", idx)
