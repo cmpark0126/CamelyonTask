@@ -154,7 +154,7 @@ if __name__ == "__main__":
     #          'w', encoding='utf-8', newline='')
     # wr = csv.writer(f)
 
-    target_path = os.path.join(cf.path_of_task_1, 'b_2' + ".tif")
+    target_path = os.path.join(cf.path_of_task_2, 'b_2' + ".tif")
     slide = openslide.OpenSlide(target_path)
     level = cf.level_for_preprocessing
     downsamples = int(slide.level_downsamples[level])

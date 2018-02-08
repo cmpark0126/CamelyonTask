@@ -7,6 +7,7 @@ class Config:
     path_of_slide = './Data/slide'
     path_of_annotation = './Data/annotation'
     path_of_task_1 = './Data/task/task_1'
+    path_of_task_2 = '/mnt/disk2/interns/slidetest'
 
     # result of data preprocessing
     # './Data/result/$SLIDE_NAME/patch(etc)'
@@ -83,4 +84,4 @@ class Hyperparams:
 
     ### for eval step
     batch_size_for_eval = 250
-    threshold_for_eval = 0.1
+    threshold_for_eval = 0.06

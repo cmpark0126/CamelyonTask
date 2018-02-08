@@ -61,7 +61,9 @@ def make_patch_multi_process(args):
     #print("in function")
     manager_q, patch_q, pos = args
 
-    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
+    slide_fn = 't_1'
+
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
 
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
@@ -146,7 +148,7 @@ def _run(manager_q, patch_q, net, pos_len):
 
 
 if __name__ == "__main__":
-    slide_fn = "b_11"
+    slide_fn = "t_1"
     num_of_poecess = 3
 
     start_time = time.time()
@@ -161,7 +163,7 @@ if __name__ == "__main__":
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
     net = checkpoint['net']
     # net.share_memory()
-    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
     level = cf.level_for_preprocessing
     downsamples = int(slide.level_downsamples[level])
