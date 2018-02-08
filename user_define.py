@@ -84,4 +84,4 @@ class Hyperparams:
 
     ### for eval step
     batch_size_for_eval = 250
-    threshold_for_eval = 0.06
+    threshold_for_eval = 0.2

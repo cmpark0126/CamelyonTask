@@ -58,7 +58,7 @@ if use_cuda:
 def makecsv(file_writer, output, label, size):
     for i in range(size):
         if output[i] == 1:
-            print(label[i])
+            print(label[i][0], label[i][1])
         file_writer.writerow([label[i][0], label[i][1], output[i]])
 
 def eval_for_task1():

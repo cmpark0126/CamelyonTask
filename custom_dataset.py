@@ -42,8 +42,8 @@ class CUSTOM_DATASET(data.Dataset):
         return len(self.pos)
 
 def make_patch_imform():
-    slide_fn = 'b_2'
-    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
 
     level = cf.level_for_preprocessing
@@ -73,8 +73,8 @@ def get_custom_dataset(transform = None):
     start_time = time.time()
     #set_of_patch, set_of_real_pos = make_patch_imform()
     set_of_real_pos = make_patch_imform()
-    slide_fn = 'b_2'
-    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
     custom_dataset = CUSTOM_DATASET(target_path, set_of_real_pos, transform)
     end_time = time.time()

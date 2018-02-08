@@ -57,7 +57,7 @@ def get_interest_region(tissue_mask, o_knl=5, c_knl=9):
     xmin = sys.maxsize
     ymin = sys.maxsize
 
-    print("in makeRECT")
+    #print("in makeRECT")
     for i in contours:
         x,y,w,h = cv2.boundingRect(i)
         if(x > xmax):
@@ -98,7 +98,7 @@ def get_pos_of_patch_for_eval(slide, mask, set_of_pos):
     downsamples = 2 ** level
     gap = int(304 / downsamples)
 
-    print(mask.shape)
+    #print(mask.shape)
     length = len(set_of_pos)
 
     set_of_real_pos = []
@@ -156,8 +156,8 @@ if __name__ == "__main__":
     # f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
     #          'w', encoding='utf-8', newline='')
     # wr = csv.writer(f)
-
-    target_path = os.path.join(cf.path_of_task_2, 'b_2' + ".tif")
+    slide_fn = 't_6'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
     level = cf.level_for_preprocessing
     downsamples = int(slide.level_downsamples[level])
@@ -173,7 +173,7 @@ if __name__ == "__main__":
 
     set_of_pos = [(x , y) for x in range(x_min, x_max, stride_rescale) for y in range(y_min, y_max, stride_rescale)]
 
-    set_of_real_pos = get_pos_of_patch_for_eval(tissue_mask, set_of_pos)
+    set_of_real_pos = get_pos_of_patch_for_eval(slide, tissue_mask, set_of_pos)
 
     set_of_real_pos = np.array(set_of_real_pos)
 
@@ -183,6 +183,6 @@ if __name__ == "__main__":
     thumbnail = slide.get_thumbnail((col, row))
     thumbnail = np.array(thumbnail)
 
-    cv2.imwrite("thumbnail.jpg", thumbnail)
+    cv2.imwrite(slide_fn + "_thumbnail.jpg", thumbnail)
 
-    draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples)
+    draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples, slide_fn)
