@@ -6,7 +6,7 @@ class Config:
     '''config'''
     path_of_slide = './Data/slide'
     path_of_annotation = './Data/annotation'
-    path_of_task_1 = './Data/task/task_1'
+    path_of_task_1 = './Data/slide'
 
     # result of data preprocessing
     # './Data/result/$SLIDE_NAME/patch(etc)'
@@ -51,6 +51,10 @@ class Config:
     #                                'b_2',]
     # list_of_slide_for_val       = ['b_4',
     #                                'b_9',]
+
+    # for determine is background
+    ratio_of_tissue_area = 0.5
+    stride_for_heatmap = 152
 
 
 class Hyperparams:
