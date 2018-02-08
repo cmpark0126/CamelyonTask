@@ -46,10 +46,10 @@ import cv2
 
 # 304
 stride = 304
-slide_fn = "b_2"
+slide_fn = "b_13"
 
-q = Queue()
-patch_q = Queue()
+#q = Queue()
+#patch_q = Queue()
 
 def makecsv(output, label, size):
     #print(output)
@@ -58,52 +58,6 @@ def makecsv(output, label, size):
             print(label[i])
         wr.writerow([label[i][0], label[i][1], output[i]])
 
-
-"""
-def make_patch_process(q):
-    target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
-    slide = openslide.OpenSlide(target_path)
-
-    set_of_patch = []
-    set_of_pos = []
-
-    i = 0
-    pbar_total = round(
-        ((slide.dimensions[1] / stride) * (slide.dimensions[0] / stride)) / batch_size)
-    pbar = tqdm.tqdm(total=pbar_total)
-    for y in range(round(slide.dimensions[1] / stride)):
-        y *= stride
-        for x in range(round(slide.dimensions[0] / stride)):
-            x *= stride
-            patch = slide.read_region((x, y), 0, hp.patch_size).convert("RGB")
-            #img = torch.from_numpy(np.array(patch).transpose((2, 0, 1)))
-            # set_of_patch.append(img.float().div(255))
-            div_patch = np.array(patch)
-            set_of_patch.append(np.divide(div_patch, 255))
-            set_of_pos.append(np.array([x, y]))
-            i += 1
-            if i == batch_size:
-                test_dataset = {}
-                i = 0
-                #np.moveaxis(arr,-1, 0)
-                #arr = arr/255
-                arr = np.array(set_of_patch)
-                tset = torch.from_numpy(arr.transpose((0, 3, 1, 2)))
-                # tset.float().div(255)
-                # print(arr.shape)
-                test_dataset[cf.key_of_data] = tset
-                test_dataset[cf.key_of_informs] = np.array(set_of_pos)
-                q.put(test_dataset)
-                # print(test_dataset[cf.key_of_data].shape)
-                # print(test_dataset[cf.key_of_informs].shape)
-                set_of_pos.clear()
-                set_of_patch.clear()
-                pbar.update()
-                # print(test_dataset)
-
-    q.put("DONE")
-    pbar.close()
-"""
 def determine_is_background(patch):
     result_of_sum = np.sum(patch)
 
@@ -121,22 +75,15 @@ def make_patch_multi_process(args):
     #print("in function")
     q, patch_q, pos = args
 
-    target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
+    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
-
-    #pos = pos_list
-
-    #if pos == (-1, -1):
-    #    print("end queue")
-    #    q.put("DONE")
-    #    return
 
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
     _div_patch = np.array(patch)
     div_patch = np.divide(_div_patch, 255)
 
-    if not determine_is_background(div_patch):
-        return True
+    #if not determine_is_background(div_patch):
+    #    return True
 
     test_dataset = {}
     test_dataset[cf.key_of_data] = div_patch
@@ -203,13 +150,6 @@ def _get_interest_region(slide, level, o_knl=5, c_knl=9):
         elif(y < ymin):
             ymin = y
 
-    # cv2.rectangle(ori_img, (xmin, ymin), (xmax, ymax), (0,0,255), 5)
-    #
-    # print('Rectangular mask generated.')
-    #
-    # cv2.imwrite("result_of_interest_region.jpg", ori_img)
-    # cv2.imwrite("tissue_mask.jpg", thresh)
-
     downsamples = int(slide.level_downsamples[level])
 
     return (xmin * downsamples, ymin * downsamples, xmax * downsamples, ymax * downsamples)
@@ -220,7 +160,7 @@ if __name__ == "__main__":
     use_cuda = torch.cuda.is_available()
 
     threshold = 0.1
-    batch_size = 200
+    #batch_size = 200
 
     f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
              'w', encoding='utf-8', newline='')
@@ -236,8 +176,7 @@ if __name__ == "__main__":
     # print(checkpoint)
     net = checkpoint['net']
     # net.share_memory()
-
-    target_path = os.path.join(cf.path_of_task_1, slide_fn + ".tif")
+    target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
 
     manager = Manager()
@@ -248,6 +187,9 @@ if __name__ == "__main__":
     p = Process(target=manage_q, args=(patch_q, q,))
     p.start()
 
+    p2 = Process(target=manage_q, args=(patch_q, q,))
+    p2.start()
+
     x_min, y_min, x_max, y_max = _get_interest_region(slide, cf.level_for_preprocessing)
 
     pos = [(x , y) for x in range(x_min, x_max, stride) for y in range(y_min, y_max, stride)]
@@ -256,7 +198,7 @@ if __name__ == "__main__":
 
     print("go to map")
 
-    pool = Pool(4)
+    pool = Pool(8)
     result = pool.map_async(make_patch_multi_process, zip(repeat(q), repeat(patch_q), pos))
     # print(result.successful())
 
@@ -275,8 +217,9 @@ if __name__ == "__main__":
 
     print("start")
     while True:
-        if q.empty():
+        if q.empty() and patch_q.qsize() < hp.batch_size_for_eval:
             p.terminate()
+            p2.terminate()
             print("end loop")
             break
 
@@ -299,16 +242,17 @@ if __name__ == "__main__":
         outputs = torch.floor(outputs)
         outputs_cpu = outputs.data.cpu()
 
-        outputs_cpu = [0]*inputs.size(0)
         #print(len(outputs_cpu.shape))
         makecsv(outputs_cpu, label, inputs.size(0))
         print("\ntest loop ", idx)
         print("Patch Queue size is ", patch_q.qsize())
+        print("Queue size is ", q.qsize())
         idx += 1
 
     print("test loop end")
 
     p.join()
+    p2.join()
     result.wait()
     f.close()
     end_time = time.time()

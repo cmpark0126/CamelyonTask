@@ -24,8 +24,8 @@ output = np.zeros(shape=slide.level_dimensions[output_level][::-1])
 
 rdr = csv.reader(f)
 for line in rdr:
-    print(line)
-    
+    #print(line)
+
     if line[2] == '1.0':
         print(line[0], line[1])
         x_pos = line[0].strip()
@@ -33,6 +33,6 @@ for line in rdr:
         y_pos = line[1].strip()
         y = round(int(y_pos)/slide.level_downsamples[output_level])
         output[y:y+19, x:x+19] = 255
-    
+
 
 cv2.imwrite(slide_fn + '_reult.png', output)
