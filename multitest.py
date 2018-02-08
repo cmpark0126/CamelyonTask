@@ -35,16 +35,18 @@ from user_define import Hyperparams as hp
 from torch.multiprocessing import Queue, Pool, Process, Manager
 from functools import partial
 
-import tqdm
+# import tqdm
 import time
 import pdb
 
 from itertools import repeat
 from operator import methodcaller
 
+import cv2
+
 # 304
 stride = 304
-slide_fn = "b_13"
+slide_fn = "b_2"
 
 q = Queue()
 patch_q = Queue()
@@ -102,7 +104,17 @@ def make_patch_process(q):
     q.put("DONE")
     pbar.close()
 """
+def determine_is_background(patch):
+    result_of_sum = np.sum(patch)
 
+    # print(result_of_sum)
+
+    if result_of_sum == 0:
+        return True
+    elif result_of_sum == 304 * 304:
+        return True
+    else:
+        return False
 
 def make_patch_multi_process(args):
     #print("in make patch")
@@ -120,9 +132,14 @@ def make_patch_multi_process(args):
     #    return
 
     patch = slide.read_region(pos, 0, hp.patch_size).convert("RGB")
-    div_patch = np.array(patch)
+    _div_patch = np.array(patch)
+    div_patch = np.divide(_div_patch, 255)
+
+    if not determine_is_background(div_patch):
+        return True
+
     test_dataset = {}
-    test_dataset[cf.key_of_data] = np.divide(div_patch, 255)
+    test_dataset[cf.key_of_data] = div_patch
     test_dataset[cf.key_of_informs] = np.array(pos)
     patch_q.put(test_dataset)
 
@@ -150,6 +167,52 @@ def manage_q(patch_q, q):
             test_dataset[cf.key_of_informs] = np.array(set_of_pos)
             q.put(test_dataset)
 
+def _get_interest_region(slide, level, o_knl=5, c_knl=9):
+    col, row = slide.level_dimensions[level]
+
+    ori_img = np.array(slide.read_region((0, 0), level, (col, row)))
+    img = cv2.cvtColor(ori_img, cv2.COLOR_RGBA2RGB)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    img = img[:,:,1]
+
+    ret, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    open_knl = np.ones((o_knl, o_knl), dtype = np.uint8)
+    close_knl = np.ones((c_knl, c_knl), dtype = np.uint8)
+
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, open_knl)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_knl)
+
+    _ , contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    xmax = 0
+    ymax = 0
+    xmin = sys.maxsize
+    ymin = sys.maxsize
+
+    print("in makeRECT")
+    for i in contours:
+        x,y,w,h = cv2.boundingRect(i)
+        if(x > xmax):
+            xmax = x
+        elif(x < xmin):
+            xmin = x
+
+        if(y > ymax):
+            ymax = y
+        elif(y < ymin):
+            ymin = y
+
+    # cv2.rectangle(ori_img, (xmin, ymin), (xmax, ymax), (0,0,255), 5)
+    #
+    # print('Rectangular mask generated.')
+    #
+    # cv2.imwrite("result_of_interest_region.jpg", ori_img)
+    # cv2.imwrite("tissue_mask.jpg", thresh)
+
+    downsamples = int(slide.level_downsamples[level])
+
+    return (xmin * downsamples, ymin * downsamples, xmax * downsamples, ymax * downsamples)
 
 if __name__ == "__main__":
     # mp.set_start_method('spawn')
@@ -185,7 +248,10 @@ if __name__ == "__main__":
     p = Process(target=manage_q, args=(patch_q, q,))
     p.start()
 
-    pos= [ (x * stride, y * stride) for y in range(round(slide.dimensions[1] / stride)) for x in range(round(slide.dimensions[0] / stride))]
+    x_min, y_min, x_max, y_max = _get_interest_region(slide, cf.level_for_preprocessing)
+
+    pos = [(x , y) for x in range(x_min, x_max, stride) for y in range(y_min, y_max, stride)]
+
     #pos.append((-1, -1))
 
     print("go to map")
