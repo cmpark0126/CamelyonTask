@@ -115,13 +115,13 @@ def get_pos_of_patch_for_eval(slide, mask, set_of_pos):
         else:
             xreal, yreal = x*downsamples, y*downsamples
             set_of_real_pos.append((xreal, yreal))
-            real_patch = slide.read_region((xreal, yreal), 0, hp.patch_size).convert('RGB')
-            set_of_patch.append(np.array(real_patch))
+            #set_of_patch.append(np.array(real_patch))
             j = j + 1
         print("\r %d/%d correct : %d" % (i, length, j), end="")
 
     print("\n")
-    return set_of_patch, set_of_real_pos
+    #return set_of_patch, set_of_real_pos
+    return set_of_real_pos
 
 def determine_is_background(patch):
     area = patch.size

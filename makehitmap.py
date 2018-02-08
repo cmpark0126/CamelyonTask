@@ -9,7 +9,7 @@ import openslide
 import cv2
 
 
-slide_fn = 'b_1'
+slide_fn = 'b_2'
 output_level = 4
 
 #f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
