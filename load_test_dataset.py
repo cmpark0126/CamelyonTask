@@ -14,7 +14,7 @@ import torch.utils.data as data
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
-from create_pos_for_test2 import *
+from remove_background import *
 
 
 class CUSTOM_DATASET(data.Dataset):
@@ -68,7 +68,7 @@ def make_patch_imform():
     return set_of_real_pos
 
 
-def get_custom_dataset(transform = None):
+def get_test_dataset(transform = None):
 
     start_time = time.time()
     #set_of_patch, set_of_real_pos = make_patch_imform()
@@ -76,14 +76,14 @@ def get_custom_dataset(transform = None):
     slide_fn = 't_4'
     target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
     slide = openslide.OpenSlide(target_path)
-    custom_dataset = CUSTOM_DATASET(target_path, set_of_real_pos, transform)
+    test_dataset = CUSTOM_DATASET(target_path, set_of_real_pos, transform)
     end_time = time.time()
     print("creating dataset is end, Running time is :  ", end_time - start_time)
-    return custom_dataset
+    return test_dataset
 
 if __name__ == "__main__":
     start_time = time.time()
-    custom_dataset = get_custom_dataset()
+    test_dataset = get_test_dataset()
 
     end_time = time.time()
     print("creating dataset is end, Running time is :  ", end_time - start_time)

@@ -1,4 +1,4 @@
-from __future__ import print_function
+get_test_datasetfrom __future__ import print_function
 
 import torch
 import torch.nn as nn
@@ -24,7 +24,7 @@ import pylab
 
 from load_dataset import get_test_dataset
 from load_dataset import get_val_dataset
-from custom_dataset import *
+from load_test_dataset import *
 
 import pdb
 import csv
@@ -39,7 +39,7 @@ print('==> Preparing data..')
 transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
-testset = get_custom_dataset(transform_test)
+testset = get_test_dataset(transform_test)
 testloader = torch.utils.data.DataLoader(testset,
                                          hp.batch_size_for_eval,
                                          shuffle=False,
