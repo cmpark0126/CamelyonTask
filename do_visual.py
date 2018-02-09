@@ -8,8 +8,6 @@ import os
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
-dim = 4
-
 if __name__ == "__main__":
     slide_fn = "t_4"
 
@@ -24,22 +22,7 @@ if __name__ == "__main__":
     np_predict = np.array(predict_mask)
 
     np_predict[:, :,1] = 255
-    #np_predict[2] = 0
-
-
 
     predict_mask = Image.fromarray(np_predict)
-    """
-    print(predict_mask.sum())
-    color_change = np.zeros(thumbnail.size[::-1])
 
-    print(predict_mask.shape)
-    print(color_change.shape)
-
-    predict_mask = np.expand_dims(predict_mask, axis=2)
-    color_change = np.expand_dims(color_change, axis=2)
-    predict_mask = np.concatenate((color_change, predict_mask, color_change), axis = 2)
-    print(predict_mask.shape)
-    print(np.asarray(thumbnail).shape)
-    """
     Image.blend(thumbnail, predict_mask, 0.2).save(slide_fn + '_visual.png')
