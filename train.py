@@ -76,7 +76,7 @@ if hp.resume:
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
 
     net = checkpoint['net']
-    best_auc = checkpoint['AUC']
+    best_auc =  checkpoint['AUC']
     start_epoch = checkpoint['epoch']
 
 else:
@@ -102,7 +102,7 @@ optimizer = optim.SGD(net.parameters(), lr=hp.learning_rate,
 #optimizer = optim.Adam(net.parameters(), lr=hp.learning_rate)
 #optimizer = optim.RMSprop(net.parameters(), lr=hp.learning_rate, alpha=0.99)
 
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True, threshold = 0.001)
 
 
@@ -169,11 +169,11 @@ def val(epoch):
 
     sensitivity = []
     specificity = []
+    precision = [0] * (section)
+    recall = [0] * (section)
 
     auc = 0
     best_threshold = hp.threshold_for_train
-    best_recall = 0
-    best_precision = 0
     best_score_inside = 0
 
     for batch_idx, (inputs, targets) in enumerate(valloader):
@@ -216,29 +216,34 @@ def val(epoch):
     false_positive[0] = real_normal
     false_negative[divisor] = real_tumor
     for i in range(section):
-        true_positive = real_tumor - false_negative[i]
-        precision = true_positive / (true_positive + false_positive[i] + 1e-6)
-        recall = true_positive / (true_positive + false_negative[i] + 1e-6)
-        f_score = 2 * precision * recall / (precision + recall+1e-8)
+        if i !=0 and i!= divisor:
+            true_positive = real_tumor - false_negative[i]
+            precision[i] = true_positive / (true_positive + false_positive[i] + 1e-6)
+            recall[i] = true_positive / real_tumor
+        elif i == 0:
+            precision[i] = 0
+            recall[i] = 1
+        else:
+            precision[i] = 1
+            recall[i] = 0
+        f_score = 2 * precision[i] * recall[i] / (precision[i] + recall[i]+1e-8)
         if f_score > best_score_inside:
             best_score_inside = f_score
             best_threshold = i
-            best_recall = recall
-            best_precision = precision
 
         sensitivity.append(1 - false_negative[i] / real_tumor)
         specificity.append(1 - false_positive[i] / real_normal)
         if i !=0:
-            auc += 0.5 * (sensitivity[i] + sensitivity[i-1]) * (specificity[i] - specificity[i-1])
+            auc += 0.5 * (precision[i] + precision[i-1]) * (-recall[i] + recall[i-1])
 
-        print('Threshold: %.5f | Acc: %.5f%%, Spe: %.5f, Sen: %.5f'
+        print('Threshold: %.5f | Acc: %.5f%%, Pre: %.5f, Recall: %.5f'
               % (i / divisor,
                 100.* (total - false_negative[i] - false_positive[i]) / total,
-                specificity[i], sensitivity[i]))
-
-    plt.plot(specificity, sensitivity)
-    plt.xlabel('Specificity')
-    plt.ylabel('Sensitivity')
+                precision[i], recall[i]))
+    
+    plt.plot(recall, precision)
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
     fig = plt.gcf()
     fig.savefig('ROC_curve.png')
     fig = plt.gcf().clear()
@@ -246,9 +251,11 @@ def val(epoch):
     acc = 100. * (1 -  (false_negative[best_threshold]+false_positive[best_threshold])/total)
     print('Best score: ', best_score_inside, 'at threshold: ', best_threshold / divisor)
     print('Sensitivity: ', sensitivity[best_threshold], ', Specificity: ', specificity[best_threshold])
-    print('Accuracy: ', acc, ', Recall: ', best_recall, ', Precision: ', best_precision )
+    print('Accuracy: ', acc, ', Recall: ', recall[best_threshold], ', Precision: ', precision[best_threshold] )
     print('AUC: ', auc)
     print('FN: ', false_negative[best_threshold], ', FP: ', false_positive[best_threshold], ', RP: ', real_tumor, ', RN: ', real_normal)
+
+    
     info = {
         'loss': val_loss,
         'Acc': acc,
@@ -264,6 +271,8 @@ def val(epoch):
         tag = tag.replace('.', '/')
         logger.histo_summary(tag, to_np(value), epoch + 1)
         logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
+    
+    
     # Save checkpoint.
     if best_auc < auc:
         print('Saving..')
@@ -278,7 +287,8 @@ def val(epoch):
         best_auc = auc
     print(best_auc, ", AUC")
 
-for epoch in range(start_epoch, start_epoch + 40):
-#    scheduler.step()
+
+for epoch in range(start_epoch, start_epoch + 10):
+    scheduler.step()
     train(epoch)
     val(epoch)

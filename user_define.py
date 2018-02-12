@@ -64,8 +64,13 @@ class Hyperparams:
     patch_size = (304, 304)
 
     # for dataset
+<<<<<<< HEAD
     number_of_patch_per_slide = 7000
     ratio_of_tumor_patch      = 0.5
+=======
+    number_of_patch_per_slide = 2500
+    ratio_of_tumor_patch      = 0.75
+>>>>>>> model
     threshold_of_tumor_rate   = 0.4
 
     # for run model
@@ -73,14 +78,23 @@ class Hyperparams:
     resume        = False
 
     ## for optimizer
+<<<<<<< HEAD
     learning_rate = 0.01
+=======
+    learning_rate = 0.001
+>>>>>>> model
     momentum      = 0.9
     weight_decay  = 9e-4
 
     ## for epoch
     ### for train step
+<<<<<<< HEAD
     batch_size_for_train = 200
     threshold_for_train = 0.2
+=======
+    batch_size_for_train = 250
+    threshold_for_train = 0.1
+>>>>>>> model
 
     ### for eval step
     batch_size_for_eval = 250
