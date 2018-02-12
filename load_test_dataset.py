@@ -19,27 +19,71 @@ from remove_background import *
 
 class CUSTOM_DATASET(data.Dataset):
 
-    def __init__(self, patch, pos, transform=None):
+    def __init__(self, usage, slide_fn, pos, transform=None):
 
         #self.img = patch
-        self.slide = openslide.OpenSlide(patch)
+        self.usage = usage
+        self.slide = openslide.OpenSlide(slide_fn)
         self.pos = pos
         self.transform = transform
 
+        if usage == 'train':
+            self.path_of_dataset = cf.path_of_train_dataset
+        elif usage == 'val':
+            self.path_of_dataset = cf.path_of_val_dataset
+        elif usage == 'test':
+            self.path_of_dataset = cf.path_of_test_dataset
+        else:
+            raise RuntimeError("invalid usage")
+
+        self.dataset_list = self._get_dataset_list(self.path_of_dataset)
+
+        self.data = []
+        self.labels = []
+
+        if usage is 'train' or usage is 'val':
+            print("train and val")
+            for filename in self.dataset_list:
+                fliepath = os.path.join(self.path_of_dataset, filename)
+                fo = open(fliepath, 'rb')
+                dataset = pickle.load(fo)
+
+                self.data.append(dataset[cf.key_of_data])
+                self.labels.append(dataset[cf.key_of_informs])
+
+                fo.close()
+
+            self.data = np.concatenate(self.data)
+            print("data shape is ", self.data.shape)
+            self.labels = np.concatenate(self.labels)
+            print("label shape is ", self.labels.shape)
+
+
     def __getitem__(self, index):
-        #img, pos = self.img[index], self.pos[index]
-        pos = self.pos[index]
-        img = self.slide.read_region(pos, 0, hp.patch_size).convert('RGB')
+        if self.usage is "test":
+            target = self.pos[index]
+            img = self.slide.read_region(target, 0, hp.patch_size).convert('RGB')
+
+        elif self.usage is "train" or self.usage is "val" :
+            img, target = self.data[index], self.labels[index][0]
 
         img = Image.fromarray(np.array(img))
 
         if self.transform is not None:
             img = self.transform(img)
 
-        return img, pos
+        return img, target
 
     def __len__(self):
-        return len(self.pos)
+        if self.usage is 'test':
+            return len(self.pos)
+        else :
+            return len(self.data)
+
+    def _get_dataset_list(self, dir_path):
+        file_list = os.listdir(dir_path)
+        file_list.sort()
+        return file_list
 
 
 def make_patch_imform():
@@ -67,22 +111,39 @@ def make_patch_imform():
 
 
 def get_test_dataset(transform=None):
-
     start_time = time.time()
-    #set_of_patch, set_of_real_pos = make_patch_imform()
     set_of_real_pos = make_patch_imform()
     slide_fn = 't_4'
     target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
-    slide = openslide.OpenSlide(target_path)
-    test_dataset = CUSTOM_DATASET(target_path, set_of_real_pos, transform)
+    test_dataset = CUSTOM_DATASET("test", target_path, set_of_real_pos, transform)
     end_time = time.time()
     print("creating dataset is end, Running time is :  ", end_time - start_time)
     return test_dataset
 
+def get_train_dataset(transform=None):
+    start_time = time.time()
+    set_of_real_pos = make_patch_imform()
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+    train_dataset = CUSTOM_DATASET("train",target_path, set_of_real_pos, transform)
+    end_time = time.time()
+    print("creating train dataset is end, Running time is :  ", end_time - start_time)
+    return train_dataset
+
+def get_val_dataset(transform=None):
+    start_time = time.time()
+    set_of_real_pos = make_patch_imform()
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+    val_dataset = CUSTOM_DATASET("val", target_path, set_of_real_pos, transform)
+    end_time = time.time()
+    print("creating val dataset is end, Running time is :  ", end_time - start_time)
+    return val_dataset
+
 
 if __name__ == "__main__":
     start_time = time.time()
-    test_dataset = get_test_dataset()
+    test_dataset = get_train_dataset()
 
     end_time = time.time()
     print("creating dataset is end, Running time is :  ", end_time - start_time)

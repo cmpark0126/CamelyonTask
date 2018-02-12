@@ -25,7 +25,8 @@ import pylab
 
 from logger import Logger
 
-from load_dataset import get_train_dataset, get_val_dataset
+#from load_dataset import get_train_dataset, get_val_dataset
+from load_test_dataset import *
 
 # user define variable
 from user_define import Config as cf
@@ -56,17 +57,17 @@ transform_test = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-trainset = get_train_dataset(transform_train, transform_test)
-valset = get_val_dataset(transform_train, transform_test)
+trainset = get_train_dataset(transform_train)
+valset = get_val_dataset(transform_test)
 
 trainloader = torch.utils.data.DataLoader(trainset,
                                           hp.batch_size_for_train,
                                           shuffle=True,
-                                          num_workers=32)
+                                          num_workers=4)
 valloader = torch.utils.data.DataLoader(valset,
                                         hp.batch_size_for_train,
                                         shuffle=True,
-                                        num_workers=32)
+                                        num_workers=4)
 
 # Model
 if hp.resume:
@@ -81,9 +82,9 @@ if hp.resume:
 
 else:
     print('==> Building model..')
-    # net = resnet152()
+    net = resnet152()
     # net = densenet121()
-    net = inception_v3()
+    #net = inception_v3()
 
 if use_cuda:
     net.cuda()
@@ -191,7 +192,7 @@ def val(epoch):
         loss = criterion(outputs, targets)
         val_loss += loss.data[0]
         total += targets.size(0)
-        
+
 
         for i in range(section):
             if i!=0 and i!=divisor:
@@ -258,7 +259,7 @@ def val(epoch):
     # (1) Log the scalar values
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch + 1)
-    
+
     # (2) Log values and gradients of the parameters (histogram)
     for tag, value in net.named_parameters():
         tag = tag.replace('.', '/')
