@@ -55,12 +55,12 @@ class CAMELYON_PREPRO():
             self.annotation = self.get_annotation_from_xml(target_xml_path)
 
             # for save image
-            self.patch_path = os.path.join(cf.path_for_generated_image,
+            self.patch_path = os.path.join(cf.path_for_result,
                                            slide_filename,
                                            cf.base_folder_for_patch)
             self.check_path(self.patch_path)
 
-            self.etc_path = os.path.join(cf.path_for_generated_image,
+            self.etc_path = os.path.join(cf.path_for_result,
                                          slide_filename,
                                          cf.base_folder_for_etc)
             self.check_path(self.etc_path)

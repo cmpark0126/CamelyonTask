@@ -40,7 +40,7 @@ class CAMELYON_PREPRO():
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
     def __init__(self, usage, slide_filename):
-
+        print("allocator", slide_filename)
         if usage == 'train' or usage == 'val':
             target_slide_path = os.path.join(cf.path_of_slide,
                                              slide_filename + '.tif')
@@ -53,12 +53,12 @@ class CAMELYON_PREPRO():
             self.annotation = self.get_annotation_from_xml(target_xml_path)
 
             # for save image
-            self.patch_path = os.path.join(cf.path_for_generated_image,
+            self.patch_path = os.path.join(cf.path_for_result,
                                            slide_filename,
                                            cf.base_folder_for_patch)
             self.check_path(self.patch_path)
 
-            self.etc_path = os.path.join(cf.path_for_generated_image,
+            self.etc_path = os.path.join(cf.path_for_result,
                                          slide_filename,
                                          cf.base_folder_for_etc)
             self.check_path(self.etc_path)
@@ -79,6 +79,7 @@ class CAMELYON_PREPRO():
                 set_of_inform_in_tissue = self.get_inform_of_random_samples(
                                             dila_of_tissue - dila_of_tumor,
                                             num_of_patch_in_tissue)
+
             else:
                 dila_of_tissue, _ = self.get_dilaero(self.tissue_mask)
                 set_of_inform_in_tumor = self.get_inform_of_random_samples(
@@ -96,6 +97,59 @@ class CAMELYON_PREPRO():
 
 
             if cf.save_thumbnail_image:
+                self.thumbnail = self.create_thumbnail()
+                self.draw_tumor_pos_on_thumbnail()
+                self.draw_patch_pos_on_thumbnail()
+
+        elif usage == 'incorrect':
+            target_slide_path = os.path.join(cf.path_of_slide,
+                                             slide_filename + '.tif')
+            print("in incorrect")
+
+            self.slide = openslide.OpenSlide(target_slide_path)
+            self.downsamples = int(self.slide.level_downsamples[self.level])
+
+            self.tissue_mask = self.create_tissue_mask(cf.save_tissue_mask_image)
+            self.tumor_mask = self.create_tumor_mask(cf.save_tumor_mask_image)
+            #print("chhk")
+
+
+            self.patch_path = os.path.join(cf.path_for_result,
+                                           slide_filename,
+                                           cf.base_folder_for_patch)
+            self.check_path(self.patch_path)
+
+            self.etc_path = os.path.join(cf.path_for_result,
+                                         slide_filename,
+                                         cf.base_folder_for_etc)
+            self.check_path(self.etc_path)
+            print("chk")
+            num_of_patch_in_tumor = int(self.num_of_patch * self.ratio_of_tumor_patch)
+            num_of_patch_in_tissue = self.num_of_patch - num_of_patch_in_tumor
+            print(num_of_patch_in_tumor)
+            print(num_of_patch_in_tissue)
+
+
+            predict_filename_path = os.path.join(cf.path_for_result,slide_filename,"etc", slide_filename+"_reult.png" )
+            #predict_filename = slide_filename + "_reult.png"
+            predict_array = cv2.imread(predict_filename_path, 0)
+            print(predict_array)
+            set_of_inform_in_tumor = self.get_inform_of_random_samples(
+                                        (predict_array - self.tumor_mask),
+                                        num_of_patch_in_tumor)
+            set_of_inform_in_tissue = self.get_inform_of_random_samples(
+                                        self.tissue_mask,
+                                        num_of_patch_in_tissue)
+
+            self.set_of_inform = set_of_inform_in_tumor + set_of_inform_in_tissue
+            self.set_of_inform = np.array(self.set_of_inform)
+
+            self.set_of_patch = self.get_patch_data(cf.save_patch_images)
+            self.set_of_patch = np.array(self.set_of_patch)
+
+            print("afeer incorrect")
+            if cf.save_thumbnail_image:
+                print("thumbnail save")
                 self.thumbnail = self.create_thumbnail()
                 self.draw_tumor_pos_on_thumbnail()
                 self.draw_patch_pos_on_thumbnail()
@@ -176,24 +230,22 @@ class CAMELYON_PREPRO():
     def create_tissue_mask(self, save_image=False):
         slide = self.slide
         level = self.level
-
         col, row = slide.level_dimensions[level]
 
         img = np.array(slide.read_region((0, 0), level, (col, row)))
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
         img = img[:, :, 1]
-
         _, tissue_mask = cv2.threshold(img,
                                        0,
                                        255,
                                        cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
+        '''
         if save_image:
             target_image_path = os.path.join(self.etc_path,
                                              "tissue_mask.jpg")
             cv2.imwrite(target_image_path, tissue_mask)
-
+        '''
         return tissue_mask
 
 
@@ -215,6 +267,7 @@ class CAMELYON_PREPRO():
             target_image_path = os.path.join(self.etc_path,
                                              "tumor_mask.jpg")
             cv2.imwrite(target_image_path, tumor_mask)
+
 
         return tumor_mask
 
@@ -459,7 +512,7 @@ class CAMELYON_PREPRO():
 def prepro_use_multiprocess(usage, list_of_slide):
     print(list_of_slide)
     print(usage)
-    pool = Pool(multiprocessing.cpu_count() - 1)
+    pool = Pool(3)
 
     result = pool.starmap_async(
         CAMELYON_PREPRO, zip(repeat(usage), list_of_slide))
@@ -483,6 +536,12 @@ def create_val_dataset(list_of_slide_for_val):
                             list_of_slide_for_val)
 
 
+def create_incorrect_dataset(list_of_slide_for_incorrect):
+    print("creat incorrect dataset")
+    prepro_use_multiprocess("incorrect",
+                            list_of_slide_for_incorrect)
+
+
 """
 """
 def create_test_dataset():
@@ -493,9 +552,15 @@ def create_test_dataset():
 if __name__ == "__main__":
     start_time = time.time()
 
+<<<<<<< HEAD
     create_train_dataset(cf.list_of_slide_for_train)
     create_val_dataset(cf.list_of_slide_for_val)
+=======
+#    create_train_dataset(cf.list_of_slide_for_train)
+#    create_val_dataset(cf.list_of_slide_for_val)
+>>>>>>> cleaningCode
 #    create_test_dataset()
+    create_incorrect_dataset(cf.list_of_slide_for_incorrect)
 
     end_time = time.time()
     print("Run time is :  ", end_time - start_time)

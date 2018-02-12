@@ -11,7 +11,7 @@ class Config:
 
     # result of data preprocessing
     # './Data/result/$SLIDE_NAME/patch(etc)'
-    path_for_generated_image = './Data/result'
+    path_for_result = './Data/result'
     base_folder_for_patch = 'patch'
     base_folder_for_etc = 'etc'
 
@@ -48,6 +48,23 @@ class Config:
                              'b_13',
                              'b_15']
 
+    list_of_slide_for_incorrect = ['b_2',
+                                   'b_5',
+                                   'b_10',
+                                   'b_13',
+                                   'b_15',
+                                   'b_1',
+                                   'b_3',
+                                   'b_4',
+                                   'b_6',
+                                   'b_7',
+                                   'b_8',
+                                   'b_9',
+                                   'b_11',
+                                   'b_12',
+                                   'b_14']
+
+    list_of_slide_for_task2 = ['t_1', 't_2', 't_3', 't_4', 't_5', 't_6']
     # list_of_slide_for_train     = ['b_0',
     #                                'b_2',]
     # list_of_slide_for_val       = ['b_4',
@@ -65,6 +82,7 @@ class Hyperparams:
 
     # for dataset
 <<<<<<< HEAD
+<<<<<<< HEAD
     number_of_patch_per_slide = 7000
     ratio_of_tumor_patch      = 0.5
 =======
@@ -72,11 +90,17 @@ class Hyperparams:
     ratio_of_tumor_patch      = 0.75
 >>>>>>> model
     threshold_of_tumor_rate   = 0.4
+=======
+    number_of_patch_per_slide = 2000
+    ratio_of_tumor_patch = 0.5
+    threshold_of_tumor_rate = 0.4
+>>>>>>> cleaningCode
 
     # for run model
-    ## resume from checkpoint
-    resume        = False
+    # resume from checkpoint
+    resume = False
 
+<<<<<<< HEAD
     ## for optimizer
 <<<<<<< HEAD
     learning_rate = 0.01
@@ -89,6 +113,15 @@ class Hyperparams:
     ## for epoch
     ### for train step
 <<<<<<< HEAD
+=======
+    # for optimizer
+    learning_rate = 0.01
+    momentum = 0.9
+    weight_decay = 9e-4
+
+    # for epoch
+    # for train step
+>>>>>>> cleaningCode
     batch_size_for_train = 200
     threshold_for_train = 0.2
 =======
@@ -96,6 +129,6 @@ class Hyperparams:
     threshold_for_train = 0.1
 >>>>>>> model
 
-    ### for eval step
+    # for eval step
     batch_size_for_eval = 250
-    threshold_for_eval = 0.2
+    threshold_for_eval = 0.065
