@@ -76,7 +76,7 @@ if hp.resume:
     checkpoint = torch.load('./checkpoint/ckpt.pth.tar')
 
     net = checkpoint['net']
-    best_auc = checkpoint['AUC']
+    best_auc =  checkpoint['AUC']
     start_epoch = checkpoint['epoch']
 
 else:
@@ -254,6 +254,8 @@ def val(epoch):
     print('Accuracy: ', acc, ', Recall: ', recall[best_threshold], ', Precision: ', precision[best_threshold] )
     print('AUC: ', auc)
     print('FN: ', false_negative[best_threshold], ', FP: ', false_positive[best_threshold], ', RP: ', real_tumor, ', RN: ', real_normal)
+
+    
     info = {
         'loss': val_loss,
         'Acc': acc,
@@ -269,6 +271,8 @@ def val(epoch):
         tag = tag.replace('.', '/')
         logger.histo_summary(tag, to_np(value), epoch + 1)
         logger.histo_summary(tag + '/grad', to_np(value.grad), epoch + 1)
+    
+    
     # Save checkpoint.
     if best_auc < auc:
         print('Saving..')
@@ -283,7 +287,8 @@ def val(epoch):
         best_auc = auc
     print(best_auc, ", AUC")
 
+
 for epoch in range(start_epoch, start_epoch + 10):
-#    scheduler.step()
+    scheduler.step()
     train(epoch)
     val(epoch)

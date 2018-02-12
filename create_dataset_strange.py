@@ -36,7 +36,7 @@ class CAMELYON_PREPRO():
     # hyper parameters
     patch_size = hp.patch_size
     num_of_patch = hp.number_of_patch_per_slide
-    ratio_of_tumor_patch = 1
+    ratio_of_tumor_patch = hp.ratio_of_tumor_patch
     threshold_of_tumor_rate = hp.threshold_of_tumor_rate
 
     def __init__(self, usage, slide_filename):
@@ -73,15 +73,21 @@ class CAMELYON_PREPRO():
             num_of_patch_in_tissue = self.num_of_patch - num_of_patch_in_tumor
             predict_array = cv2.imread(predict_filename, 0)
 
-
+            
             dila_of_tumor, _ = self.get_dilaero(self.tumor_mask)
             
             
             set_of_inform_in_tumor = self.get_inform_of_random_samples(
                                         (predict_array - dila_of_tumor),
                                         num_of_patch_in_tumor)
+            conversion = np.ones(shape = self.tumor_mask.shape)*255
+            conversion_tumor_mask = conversion - self.tumor_mask
+            conversion_predicted = conversion - predict_array
+            dila_of_conversed_tumor, _ = self.get_dilaero(conversion_tumor_mask)
+            
+            
             set_of_inform_in_tissue = self.get_inform_of_random_samples(
-                                        self.tissue_mask,
+                                        conversion_predicted - dila_of_conversed_tumor,
                                         num_of_patch_in_tissue)
             
             self.set_of_inform = set_of_inform_in_tumor + set_of_inform_in_tissue
@@ -217,7 +223,7 @@ class CAMELYON_PREPRO():
     """
     """
     def get_dilaero(self, mask):
-        kernel_dilation = np.ones((25, 25), np.uint8)
+        kernel_dilation = np.ones((20, 20), np.uint8)
         dilation = cv2.dilate(mask, kernel_dilation, iterations=1)
         kernel_erosion = np.ones((9, 9), np.uint8)
         erosion = cv2.erode(mask, kernel_erosion, iterations=1)
