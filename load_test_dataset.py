@@ -60,14 +60,9 @@ def make_patch_imform():
                   for y in range(y_min, y_max, stride_rescale)]
     set_of_real_pos = get_pos_of_patch_for_eval(
         target_path, tissue_mask, set_of_pos)
-    #set_of_patch, set_of_real_pos = get_pos_of_patch_for_eval(slide, tissue_mask, set_of_pos)
-    # print(set_of_patch)
-    # print(type(set_of_patch))
 
     set_of_real_pos = np.array(set_of_real_pos)
-    #set_of_patch = np.array(set_of_patch)
 
-    # return  set_of_patch ,set_of_real_pos
     return set_of_real_pos
 
 
