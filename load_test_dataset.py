@@ -41,6 +41,7 @@ class CUSTOM_DATASET(data.Dataset):
     def __len__(self):
         return len(self.pos)
 
+
 def make_patch_imform():
     slide_fn = 't_4'
     target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
@@ -55,20 +56,22 @@ def make_patch_imform():
     stride = cf.stride_for_heatmap
     stride_rescale = int(stride / downsamples)
 
-    set_of_pos = [(x , y) for x in range(x_min, x_max, stride_rescale) for y in range(y_min, y_max, stride_rescale)]
-    set_of_real_pos = get_pos_of_patch_for_eval(target_path, tissue_mask, set_of_pos)
+    set_of_pos = [(x, y) for x in range(x_min, x_max, stride_rescale)
+                  for y in range(y_min, y_max, stride_rescale)]
+    set_of_real_pos = get_pos_of_patch_for_eval(
+        target_path, tissue_mask, set_of_pos)
     #set_of_patch, set_of_real_pos = get_pos_of_patch_for_eval(slide, tissue_mask, set_of_pos)
-    #print(set_of_patch)
-    #print(type(set_of_patch))
+    # print(set_of_patch)
+    # print(type(set_of_patch))
 
     set_of_real_pos = np.array(set_of_real_pos)
     #set_of_patch = np.array(set_of_patch)
 
-    #return  set_of_patch ,set_of_real_pos
+    # return  set_of_patch ,set_of_real_pos
     return set_of_real_pos
 
 
-def get_test_dataset(transform = None):
+def get_test_dataset(transform=None):
 
     start_time = time.time()
     #set_of_patch, set_of_real_pos = make_patch_imform()
@@ -80,6 +83,7 @@ def get_test_dataset(transform = None):
     end_time = time.time()
     print("creating dataset is end, Running time is :  ", end_time - start_time)
     return test_dataset
+
 
 if __name__ == "__main__":
     start_time = time.time()

@@ -12,11 +12,13 @@ import cv2
 slide_fn = 't_4'
 output_level = 4
 
-#f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
+#f = open(cf.path_for_result + "/" + slide_fn + "_result.csv",
 #         'r', encoding='utf-8')
 
+csv_path = os.path.join(cf.path_for_result, slide_fn, slide_fn + "_result.csv")
+print("input is ", csv_path)
 
-f = open(cf.path_for_generated_image + "/result.csv",
+f = open(csv_path,
          'r', encoding='utf-8')
 
 target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
@@ -38,5 +40,6 @@ for line in rdr:
         y = round(int(y_pos)/slide.level_downsamples[output_level])
         output[y:y+19, x:x+19] = 255
 
-
-cv2.imwrite(slide_fn + '_result.png', output)
+target_path = os.path.join(cf.path_for_result, slide_fn, slide_fn + "_result.png")
+print("out put is ", target_path)
+cv2.imwrite(target_path, output)

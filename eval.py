@@ -1,4 +1,4 @@
-get_test_datasetfrom __future__ import print_function
+from __future__ import print_function
 
 import torch
 import torch.nn as nn
@@ -35,6 +35,8 @@ from user_define import Hyperparams as hp
 
 use_cuda = torch.cuda.is_available()
 
+slide_fn = "t_4"
+
 print('==> Preparing data..')
 transform_test = transforms.Compose([
     transforms.ToTensor(),
@@ -55,16 +57,19 @@ if use_cuda:
         net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
 
+
 def makecsv(file_writer, output, label, size):
     for i in range(size):
         if output[i] == 1:
             print(label[i][0], label[i][1])
         file_writer.writerow([label[i][0], label[i][1], output[i]])
 
-def eval_for_task1():
+
+def eval_run():
     net.eval()
-    fn = os.path.join(cf.path_for_generated_image, 'result.csv')
-    fo = open(fn, 'w', encoding='utf-8', newline='')
+    csv_path = os.path.join(cf.path_for_result, slide_fn, slide_fn + "_result.csv")
+    #fn = os.path.join(cf.path_for_result, 'result.csv')
+    fo = open(csv_path, 'w', encoding='utf-8', newline='')
     fw = csv.writer(fo)
 
     for batch_idx, (inputs, label) in enumerate(testloader):
@@ -83,12 +88,13 @@ def eval_for_task1():
 
         makecsv(fw, outputs_cpu, label, inputs.size(0))
 
-        print("\r loop is %d" %batch_idx)
+        print("\r loop is %d" % batch_idx)
 
     fo.close()
 
+
 start_time = time.time()
-eval_for_task1()
+eval_run()
 end_time = time.time()
 print("Program end, Running time is :  ", end_time - start_time)
 
