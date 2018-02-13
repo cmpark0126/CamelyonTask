@@ -25,8 +25,7 @@ import pylab
 
 from logger import Logger
 
-#from load_dataset import get_train_dataset, get_val_dataset
-from load_test_dataset import *
+from load_dataset import *
 
 # user define variable
 from user_define import Config as cf
@@ -82,7 +81,7 @@ if hp.resume:
 
 else:
     print('==> Building model..')
-    net = resnet152()
+    net = resnet18()
     # net = densenet121()
     #net = inception_v3()
 

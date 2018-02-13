@@ -6,6 +6,7 @@ import errno
 import numpy as np
 import sys
 import pickle
+import openslide
 
 import torch.utils.data as data
 
@@ -13,22 +14,18 @@ import torch.utils.data as data
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
-class CAMELYON_DATALOADER(data.Dataset):
-    """
-    Args:
-        root (string): Root directory of dataset where directory
-        usage (string, optional)
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
-    """
+from remove_background import *
 
-    def __init__(self, usage='train',
-                 transform=None, target_transform=None):
-        self.transform = transform
-        self.target_transform = target_transform
+
+class CUSTOM_DATASET(data.Dataset):
+
+    def __init__(self, usage, slide_fn, pos, transform=None):
+
+        #self.img = patch
         self.usage = usage
+        self.slide = openslide.OpenSlide(slide_fn)
+        self.pos = pos
+        self.transform = transform
 
         if usage == 'train':
             self.path_of_dataset = cf.path_of_train_dataset
@@ -41,52 +38,47 @@ class CAMELYON_DATALOADER(data.Dataset):
 
         self.dataset_list = self._get_dataset_list(self.path_of_dataset)
 
-        print(self.dataset_list)
-        # now load the picked numpy arrays
         self.data = []
         self.labels = []
-        for filename in self.dataset_list:
-            fliepath = os.path.join(self.path_of_dataset, filename)
-            fo = open(fliepath, 'rb')
-            dataset = pickle.load(fo)
 
-            self.data.append(dataset[cf.key_of_data])
-            self.labels.append(dataset[cf.key_of_informs])
+        if usage is 'train' or usage is 'val':
+            print("train and val")
+            for filename in self.dataset_list:
+                fliepath = os.path.join(self.path_of_dataset, filename)
+                fo = open(fliepath, 'rb')
+                dataset = pickle.load(fo)
 
-            fo.close()
+                self.data.append(dataset[cf.key_of_data])
+                self.labels.append(dataset[cf.key_of_informs])
 
-        self.data = np.concatenate(self.data)
-        print("data shape is ", self.data.shape)
-        self.labels = np.concatenate(self.labels)
-        print("label shape is ", self.labels.shape)
+                fo.close()
+
+            self.data = np.concatenate(self.data)
+            print("data shape is ", self.data.shape)
+            self.labels = np.concatenate(self.labels)
+            print("label shape is ", self.labels.shape)
+
 
     def __getitem__(self, index):
-        """
-        Args:
-            index (int): Index
+        if self.usage is "test":
+            target = self.pos[index]
+            img = self.slide.read_region(target, 0, hp.patch_size).convert('RGB')
 
-        Returns:
-            tuple: (image, target) where target is index of the target class.
-        """
-        if self.usage == 'test':
-            img, target = self.data[index], self.labels[index]
-        else:
+        elif self.usage is "train" or self.usage is "val" :
             img, target = self.data[index], self.labels[index][0]
 
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        img = Image.fromarray(img)
+        img = Image.fromarray(np.array(img))
 
         if self.transform is not None:
             img = self.transform(img)
 
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
         return img, target
 
     def __len__(self):
-        return len(self.data)
+        if self.usage is 'test':
+            return len(self.pos)
+        else :
+            return len(self.data)
 
     def _get_dataset_list(self, dir_path):
         file_list = os.listdir(dir_path)
@@ -94,32 +86,65 @@ class CAMELYON_DATALOADER(data.Dataset):
         return file_list
 
 
-def get_train_dataset(train_transform, test_transform,
-                      train_target_transform=None, test_target_transform=None):
-    train_dataset = CAMELYON_DATALOADER(usage='train',
-                                        transform=train_transform,
-                                        target_transform=train_target_transform)
+def make_patch_imform():
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+    slide = openslide.OpenSlide(target_path)
+
+    level = cf.level_for_preprocessing
+    downsamples = int(slide.level_downsamples[level])
+
+    tissue_mask = create_tissue_mask(slide)
+    x_min, y_min, x_max, y_max = get_interest_region(tissue_mask)
+
+    stride = cf.stride_for_heatmap
+    stride_rescale = int(stride / downsamples)
+
+    set_of_pos = [(x, y) for x in range(x_min, x_max, stride_rescale)
+                  for y in range(y_min, y_max, stride_rescale)]
+    set_of_real_pos = get_pos_of_patch_for_eval(
+        target_path, tissue_mask, set_of_pos)
+
+    set_of_real_pos = np.array(set_of_real_pos)
+
+    return set_of_real_pos
+
+
+def get_test_dataset(transform=None):
+    start_time = time.time()
+    set_of_real_pos = make_patch_imform()
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+    test_dataset = CUSTOM_DATASET("test", target_path, set_of_real_pos, transform)
+    end_time = time.time()
+    print("creating dataset is end, Running time is :  ", end_time - start_time)
+    return test_dataset
+
+def get_train_dataset(transform=None):
+    start_time = time.time()
+    set_of_real_pos = make_patch_imform()
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+    train_dataset = CUSTOM_DATASET("train",target_path, set_of_real_pos, transform)
+    end_time = time.time()
+    print("creating train dataset is end, Running time is :  ", end_time - start_time)
     return train_dataset
 
-
-def get_val_dataset(train_transform, test_transform,
-                    train_target_transform=None, test_target_transform=None):
-    val_dataset = CAMELYON_DATALOADER(usage='val',
-                                      transform=test_transform,
-                                      target_transform=test_target_transform)
+def get_val_dataset(transform=None):
+    start_time = time.time()
+    set_of_real_pos = make_patch_imform()
+    slide_fn = 't_4'
+    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+    val_dataset = CUSTOM_DATASET("val", target_path, set_of_real_pos, transform)
+    end_time = time.time()
+    print("creating val dataset is end, Running time is :  ", end_time - start_time)
     return val_dataset
 
 
-def get_test_dataset(train_transform, test_transform,
-                     train_target_transform=None, test_target_transform=None):
-    test_dataset = CAMELYON_DATALOADER(usage='test',
-                                       transform=test_transform,
-                                       target_transform=test_target_transform)
-    return test_dataset
-
-
 if __name__ == "__main__":
-    get_train_dataset(None, None)
-    get_val_dataset(None, None)
-    get_test_dataset(None, None)
-    print("Dane")
+    start_time = time.time()
+    test_dataset = get_train_dataset()
+
+    end_time = time.time()
+    print("creating dataset is end, Running time is :  ", end_time - start_time)
+    print("Done")

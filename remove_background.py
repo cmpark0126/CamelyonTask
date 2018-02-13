@@ -25,8 +25,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pylab
 
-from load_dataset import get_test_dataset
-from load_dataset import get_val_dataset
+from load_dataset import *
+
 
 import csv
 from user_define import Config as cf
