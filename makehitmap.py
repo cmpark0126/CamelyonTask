@@ -9,7 +9,7 @@ import openslide
 import cv2
 
 
-slide_fn = 't_4'
+slide_fn = 'b_1'
 output_level = 4
 
 #f = open(cf.path_for_generated_image + "/" + slide_fn + "_result.csv",
@@ -19,7 +19,7 @@ output_level = 4
 f = open(cf.path_for_generated_image + "/result.csv",
          'r', encoding='utf-8')
 
-target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+target_path = os.path.join(cf.path_of_slide, slide_fn + ".tif")
 slide = openslide.OpenSlide(target_path)
 
 print("start")
