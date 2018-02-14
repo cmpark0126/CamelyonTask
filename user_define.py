@@ -48,32 +48,16 @@ class Config:
                              'b_13',
                              'b_15']
 
-    list_of_slide_for_incorrect = ['b_2',
-                                   'b_5',
-                                   'b_10',
-                                   'b_13',
-                                   'b_15',
-                                   'b_1',
-                                   'b_3',
-                                   'b_4',
-                                   'b_6',
-                                   'b_7',
-                                   'b_8',
-                                   'b_9',
-                                   'b_11',
-                                   'b_12',
-                                   'b_14']
-
-    list_of_slide_for_task2 = ['t_1', 't_2', 't_3', 't_4', 't_5', 't_6']
-    # list_of_slide_for_train     = ['b_0',
-    #                                'b_2',]
-    # list_of_slide_for_val       = ['b_4',
-    #                                'b_9',]
+    list_of_slide_for_task2 = ['t_1',
+                               't_2',
+                               't_3',
+                               't_4',
+                               't_5',
+                               't_6']
 
     # for determine is background
     ratio_of_tissue_area = 0.5
     stride_for_heatmap = 304
-
 
 class Hyperparams:
     '''Hyper parameters'''

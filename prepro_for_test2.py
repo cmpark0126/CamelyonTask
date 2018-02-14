@@ -50,8 +50,9 @@ def get_interest_region(tissue_mask, o_knl=5, c_knl=9):
     tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_OPEN, open_knl)
     tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, close_knl)
 
-    _, contours, hierarchy = cv2.findContours(
-        tissue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hierarchy = cv2.findContours(tissue_mask,
+                                              cv2.RETR_EXTERNAL,
+                                              cv2.CHAIN_APPROX_SIMPLE)
 
     cv2.imwrite("tissue_mask.jpg", tissue_mask)
 
@@ -91,9 +92,6 @@ def create_tissue_mask(slide):
                                    255,
                                    cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # target_image_path = os.path.join(self.etc_path,
-    #                                  "tissue_mask.jpg")
-    # cv2.imwrite(target_image_path, tissue_mask)
 
     return tissue_mask
 
@@ -120,12 +118,10 @@ def get_pos_of_patch_for_eval(slide, mask, set_of_pos):
         else:
             xreal, yreal = x * downsamples, y * downsamples
             set_of_real_pos.append((xreal, yreal))
-            # set_of_patch.append(np.array(real_patch))
             j = j + 1
         print("\r %d/%d correct : %d" % (i, length, j), end="")
 
     print("\n")
-    # return set_of_patch, set_of_real_pos
     return set_of_real_pos
 
 
@@ -160,38 +156,39 @@ def draw_patch_pos_on_thumbnail(set_of_real_pos, thumbnail, downsamples, slide_f
 
 
 if __name__ == "__main__":
-    # f = open(cf.path_for_result + "/" + slide_fn + "_result.csv",
-    #          'w', encoding='utf-8', newline='')
-    # wr = csv.writer(f)
-    slide_fn = 't_6'
-    target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
-    slide = openslide.OpenSlide(target_path)
-    level = cf.level_for_preprocessing
-    downsamples = int(slide.level_downsamples[level])
+    for slide_fn in cf.list_of_slide_for_task2:
+        target_path = os.path.join(cf.path_of_task_2, slide_fn + ".tif")
+        slide = openslide.OpenSlide(target_path)
+        level = cf.level_for_preprocessing
+        downsamples = int(slide.level_downsamples[level])
 
-    tissue_mask = create_tissue_mask(slide)
+        tissue_mask = create_tissue_mask(slide)
 
-    x_min, y_min, x_max, y_max = get_interest_region(tissue_mask)
+        x_min, y_min, x_max, y_max = get_interest_region(tissue_mask)
 
-    print(x_min, y_min, x_max, y_max)
+        print(x_min, y_min, x_max, y_max)
 
-    stride = cf.stride_for_heatmap
-    stride_rescale = int(stride / downsamples)
+        stride = cf.stride_for_heatmap
+        stride_rescale = int(stride / downsamples)
 
-    set_of_pos = [(x, y) for x in range(x_min, x_max, stride_rescale)
-                  for y in range(y_min, y_max, stride_rescale)]
+        set_of_pos = [(x, y) for x in range(x_min, x_max, stride_rescale)
+                      for y in range(y_min, y_max, stride_rescale)]
 
-    set_of_real_pos = get_pos_of_patch_for_eval(slide, tissue_mask, set_of_pos)
+        set_of_real_pos = get_pos_of_patch_for_eval(slide,
+                                                    tissue_mask,
+                                                    set_of_pos)
 
-    set_of_real_pos = np.array(set_of_real_pos)
+        set_of_real_pos = np.array(set_of_real_pos)
 
-    print(set_of_real_pos.shape)
+        print(set_of_real_pos.shape)
 
-    col, row = slide.level_dimensions[level]
-    thumbnail = slide.get_thumbnail((col, row))
-    thumbnail = np.array(thumbnail)
+        col, row = slide.level_dimensions[level]
+        thumbnail = slide.get_thumbnail((col, row))
+        thumbnail = np.array(thumbnail)
 
-    cv2.imwrite(slide_fn + "_thumbnail.jpg", thumbnail)
+        cv2.imwrite(slide_fn + "_thumbnail.jpg", thumbnail)
 
-    draw_patch_pos_on_thumbnail(
-        set_of_real_pos, thumbnail, downsamples, slide_fn)
+        draw_patch_pos_on_thumbnail(set_of_real_pos,
+                                    thumbnail,
+                                    downsamples,
+                                    slide_fn)

@@ -8,9 +8,7 @@ import os
 from user_define import Config as cf
 from user_define import Hyperparams as hp
 
-if __name__ == "__main__":
-    slide_fn = "t_5"
-
+def do_visualize(slide_fn):
     thumnail_path = os.path.join(cf.path_for_result, slide_fn, slide_fn+"_thumbnail.jpg")
     thumbnail = Image.open(thumnail_path)
 
@@ -26,3 +24,10 @@ if __name__ == "__main__":
     predict_mask = Image.fromarray(np_predict)
 
     Image.blend(thumbnail, predict_mask, 0.5).save(os.path.join(cf.path_for_result, slide_fn, slide_fn + "_visual.png"))
+
+if __name__ == "__main__":
+
+    for slide_fn in cf.list_of_slide_for_task2:
+        do_visualize(slide_fn)
+
+    print("Done")

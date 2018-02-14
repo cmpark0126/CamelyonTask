@@ -24,7 +24,6 @@ import pylab
 
 from load_dataset import *
 
-
 import pdb
 import csv
 
@@ -33,8 +32,6 @@ from user_define import Config as cf
 from user_define import Hyperparams as hp
 
 use_cuda = torch.cuda.is_available()
-
-slide_fn = "t_4"
 
 print('==> Preparing data..')
 transform_test = transforms.Compose([
@@ -64,7 +61,7 @@ def makecsv(file_writer, output, label, size):
         file_writer.writerow([label[i][0], label[i][1], output[i]])
 
 
-def eval_run():
+def eval_run(slide_fn):
     net.eval()
     csv_path = os.path.join(cf.path_for_result, slide_fn, slide_fn + "_result.csv")
     #fn = os.path.join(cf.path_for_result, 'result.csv')
@@ -91,10 +88,11 @@ def eval_run():
 
     fo.close()
 
+if __name__ == "__main__":
+    start_time = time.time()
+    for slide_fn in cf.path_of_task_2:
+        eval_run(slide_fn)
+    end_time = time.time()
+    print("Program end, Running time is :  ", end_time - start_time)
 
-start_time = time.time()
-eval_run()
-end_time = time.time()
-print("Program end, Running time is :  ", end_time - start_time)
-
-print("end")
+    print("end")
