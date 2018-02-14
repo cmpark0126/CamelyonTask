@@ -77,7 +77,7 @@ The goal of this challenge is to evaluate new and existing algorithms for automa
 
 ## Result of Hard example mining
   * STEP 1. Train model
-  * STEP 2. Find Region that has midpresicted patterns from training data
+  * STEP 2. Find Region that has mispredicted patterns from training data
   * STEP 3. Extract patch on above region
   * STEP 4. Retrain model with new dataset(original + hard example mining)
   * STEP 5. Then, We can get more sensitive model with heatmap has redused noise
