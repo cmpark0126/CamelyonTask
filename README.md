@@ -75,6 +75,15 @@ The goal of this challenge is to evaluate new and existing algorithms for automa
 
   <img src="fig/heatmap_and_tumor.png">
 
+## Result of Hard example mining
+  * STEP 1. Train model
+  * STEP 2. Find Region that has midpresicted patterns from training data
+  * STEP 3. Extract patch on above region
+  * STEP 4. Retrain model with renew dataset(original + hard example mining)
+  * STEP 5. Then, We can get more sensitive model with heatmap has redused noise
+
+  <img src="fig/patch_pos_for_hard_example_mining.png">
+  <img src="fig/result_of_hard_example_mining.png">
 
 ## Result++
   * Show process of creating heatmap
@@ -85,6 +94,8 @@ The goal of this challenge is to evaluate new and existing algorithms for automa
 
   <img src="fig/ROI_for_heatmap.png">
   <img src="fig/visualization_for_heatmap.png">
+
+
 
 ## Discussion
 
